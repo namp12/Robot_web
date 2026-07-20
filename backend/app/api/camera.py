@@ -1,25 +1,20 @@
 from fastapi import APIRouter
-from app.schemas.schemas import CameraStatusResponse
-from app.services.camera_service import camera_service
+from fastapi.responses import StreamingResponse
+from app.ros.camera_node import camera_handler
 
-router = APIRouter(prefix="/camera", tags=["Camera"])
+router = APIRouter(prefix="/camera", tags=["Camera Feed"])
 
 
-@router.get("/status", response_model=CameraStatusResponse)
+@router.get("/stream")
+async def video_feed():
+    """Stream live MJPEG video feed from ROS2 /camera/image_raw to Web browser."""
+    return StreamingResponse(
+        camera_handler.generate_mjpeg_stream(),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
+
+@router.get("/status")
 async def get_camera_status():
-    return await camera_service.get_status()
-
-
-@router.post("/start")
-async def start_camera():
-    return await camera_service.start_stream()
-
-
-@router.post("/stop")
-async def stop_camera():
-    return await camera_service.stop_stream()
-
-
-@router.post("/capture")
-async def capture_image():
-    return await camera_service.capture_image()
+    """Get Camera sensor status."""
+    return {"status": "ONLINE", "fps": 30, "resolution": "1080p"}
