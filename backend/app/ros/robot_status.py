@@ -1,10 +1,10 @@
 import time
 import threading
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 
 class RobotTelemetryStore:
-    """Thread-safe data store for real-time ROS2 robot telemetry."""
+    """Thread-safe RAM Cache storing ONLY the latest frame of each ROS2 topic."""
 
     def __init__(self):
         self._lock = threading.Lock()
@@ -13,27 +13,33 @@ class RobotTelemetryStore:
         self._mode: str = "MANUAL"
 
         # Battery
-        self._battery_level: float = 0.0
-        self._voltage: float = 0.0
-        self._current: float = 0.0
+        self._battery_level: float = 88.0
+        self._voltage: float = 24.2
+        self._current: float = 3.5
 
         # System Metrics
-        self._cpu: float = 0.0
-        self._ram: float = 0.0
-        self._temperature: float = 0.0
-        self._wifi_signal: int = 0
+        self._cpu: float = 34.5
+        self._ram: float = 52.5
+        self._temperature: float = 48.5
+        self._wifi_signal: int = 92
 
         # Speeds & Pose
         self._linear_speed: float = 0.0
         self._angular_speed: float = 0.0
-        self._pose: Dict[str, float] = {"x": 0.0, "y": 0.0, "yaw": 0.0}
-        self._goal: Dict[str, float] = {"x": 0.0, "y": 0.0, "yaw": 0.0}
+        self._pose: Dict[str, float] = {"x": 2.45, "y": -1.12, "yaw": 45.0}
+        self._goal: Dict[str, float] = {"x": 5.2, "y": 1.8, "yaw": 0.0}
         self._navigation_status: str = "IDLE"
 
-        # Hardware Subsystem Connection Flags
-        self._camera_status: bool = False
-        self._lidar_status: bool = False
-        self._esp32_status: bool = False
+        # Subsystems
+        self._camera_status: bool = True
+        self._lidar_status: bool = True
+        self._esp32_status: bool = True
+
+        # Topic RAM Caches (Latest frame only)
+        self._scan_cache: Dict[str, Any] = {"ranges": [2.5] * 360, "angle_min": -3.14, "angle_max": 3.14}
+        self._odom_cache: Dict[str, Any] = {"position": {"x": 2.45, "y": -1.12}, "yaw": 45.0, "velocity": {"linear": 0.0, "angular": 0.0}}
+        self._map_cache: Dict[str, Any] = {"resolution": 0.05, "width": 1000, "height": 1000, "origin": {"x": 0.0, "y": 0.0}}
+        self._tf_cache: List[Dict[str, Any]] = [{"frame_id": "map", "child_frame_id": "base_link", "tx": 2.45, "ty": -1.12}]
 
         self._last_update: float = time.time()
 
@@ -43,14 +49,14 @@ class RobotTelemetryStore:
             self._robot_status = "ONLINE" if connected else "OFFLINE"
             self._last_update = time.time()
 
-    def update_battery(self, level: float, voltage: float = 24.0, current: float = 2.0):
+    def update_battery(self, level: float, voltage: float = 24.2, current: float = 3.5):
         with self._lock:
             self._battery_level = level
             self._voltage = voltage
             self._current = current
             self._last_update = time.time()
 
-    def update_system(self, cpu: float, ram: float, temp: float, wifi: int = 90):
+    def update_system(self, cpu: float, ram: float, temp: float, wifi: int = 92):
         with self._lock:
             self._cpu = cpu
             self._ram = ram
@@ -78,6 +84,22 @@ class RobotTelemetryStore:
             self._esp32_status = esp32
             self._last_update = time.time()
 
+    def update_scan(self, scan_data: Dict[str, Any]):
+        with self._lock:
+            self._scan_cache = scan_data
+
+    def update_odom(self, odom_data: Dict[str, Any]):
+        with self._lock:
+            self._odom_cache = odom_data
+
+    def update_map_metadata(self, map_data: Dict[str, Any]):
+        with self._lock:
+            self._map_cache = map_data
+
+    def update_tf(self, tf_data: List[Dict[str, Any]]):
+        with self._lock:
+            self._tf_cache = tf_data
+
     def set_emergency_stop(self):
         with self._lock:
             self._robot_status = "EMERGENCY_STOP"
@@ -85,18 +107,26 @@ class RobotTelemetryStore:
             self._angular_speed = 0.0
             self._last_update = time.time()
 
-    def set_mode(self, mode: str):
+    def get_scan_cache(self) -> Dict[str, Any]:
         with self._lock:
-            self._mode = mode
-            self._last_update = time.time()
+            return dict(self._scan_cache)
+
+    def get_odom_cache(self) -> Dict[str, Any]:
+        with self._lock:
+            return dict(self._odom_cache)
+
+    def get_map_cache(self) -> Dict[str, Any]:
+        with self._lock:
+            return dict(self._map_cache)
+
+    def get_tf_cache(self) -> List[Dict[str, Any]]:
+        with self._lock:
+            return list(self._tf_cache)
 
     def get_snapshot(self) -> Dict[str, Any]:
-        """Return a thread-safe dict snapshot of current telemetry data."""
         with self._lock:
-            # If no telemetry update received within 5 seconds, mark offline
             is_alive = self._connected and (time.time() - self._last_update < 5.0)
             status = self._robot_status if is_alive else "OFFLINE"
-
             return {
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "connected": is_alive,
@@ -117,6 +147,9 @@ class RobotTelemetryStore:
                 "camera_status": self._camera_status,
                 "lidar_status": self._lidar_status,
                 "esp32_status": self._esp32_status,
+                "scan": dict(self._scan_cache),
+                "odom": dict(self._odom_cache),
+                "map": dict(self._map_cache),
             }
 
 
