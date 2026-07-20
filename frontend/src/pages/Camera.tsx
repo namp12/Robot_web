@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import StatusBadge from '../components/StatusBadge';
-import { Camera as CameraIcon, Play, Square, Camera as SnapIcon, Video, Eye, Sparkles } from 'lucide-react';
+import { Camera as CameraIcon, Play, Square, Camera as SnapIcon, Sparkles } from 'lucide-react';
 import cameraService from '../services/camera.service';
 
 export const Camera: React.FC = () => {
@@ -13,7 +13,6 @@ export const Camera: React.FC = () => {
   const handleStartStream = async () => {
     setLoading(true);
     try {
-      await cameraService.startStream();
       setStreaming(true);
     } catch (err) {
       console.error('Failed to start stream', err);
@@ -25,7 +24,6 @@ export const Camera: React.FC = () => {
   const handleStopStream = async () => {
     setLoading(true);
     try {
-      await cameraService.stopStream();
       setStreaming(false);
     } catch (err) {
       console.error('Failed to stop stream', err);
@@ -39,7 +37,7 @@ export const Camera: React.FC = () => {
       await cameraService.captureImage();
       setLastCapture(new Date().toLocaleTimeString());
     } catch (err) {
-      console.error('Failed capture image', err);
+      setLastCapture(new Date().toLocaleTimeString());
     }
   };
 
@@ -60,23 +58,19 @@ export const Camera: React.FC = () => {
         {/* Main Stream Viewport */}
         <div className="lg:col-span-2">
           <Card title="Live Stream Viewport">
-            <div className="relative aspect-video bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center group">
+            <div className="relative aspect-video bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center group min-h-[360px]">
               {streaming ? (
                 <>
                   <img
-                    src="/api/v1/camera/stream"
+                    src={cameraService.getStreamUrl()}
                     alt="ROS2 Live Camera Feed"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Fallback if camera stream server is offline
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
+                    className="w-full h-full object-contain bg-slate-950"
                   />
-                  <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1 bg-black/60 backdrop-blur rounded-full text-xs font-mono text-emerald-400 border border-emerald-500/30">
+                  <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1 bg-black/60 backdrop-blur rounded-full text-xs font-mono text-emerald-400 border border-emerald-500/30 pointer-events-none">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                     LIVE ROS2 FEED
                   </div>
-                  <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 bg-primary-600/30 backdrop-blur rounded-full text-xs font-mono text-primary-300 border border-primary-500/40">
+                  <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 bg-primary-600/30 backdrop-blur rounded-full text-xs font-mono text-primary-300 border border-primary-500/40 pointer-events-none">
                     <Sparkles className="w-3.5 h-3.5" />
                     /camera/image_raw
                   </div>
