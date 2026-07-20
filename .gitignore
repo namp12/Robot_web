@@ -1,0 +1,101 @@
+# =====================================================
+# DATABASE FILES - Bảo vệ dữ liệu nhạy cảm
+# =====================================================
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+database/*.db
+database/robot.db
+
+# =====================================================
+# PYTHON
+# =====================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+ENV/
+env/
+
+# =====================================================
+# NODE / FRONTEND
+# =====================================================
+node_modules/
+npm-debug.log
+yarn-error.log
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# =====================================================
+# IDE / EDITOR
+# =====================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.env
+.env.local
+.env.*.local
+*.iml
+
+# =====================================================
+# OS
+# =====================================================
+.DS_Store
+Thumbs.db
+*.log
+
+# =====================================================
+# PROJECT SPECIFIC - Robot Data (Local only)
+# =====================================================
+robot_data/maps/*.yaml
+robot_data/maps/*.pgm
+robot_data/images/*.jpg
+robot_data/images/*.png
+robot_data/videos/*.mp4
+robot_data/videos/*.avi
+robot_data/logs/*.log
+robot_data/mcap/*.mcap
+robot_data/mcap/*.bag
+robot_data/models/*.pt
+robot_data/models/*.onnx
+
+# =====================================================
+# TEMP FILES
+# =====================================================
+*.tmp
+*.temp
+*.bak
+*.swp
+.cache/
+
+# =====================================================
+# END
+# =====================================================
