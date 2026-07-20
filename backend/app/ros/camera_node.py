@@ -1,6 +1,5 @@
 import time
 import logging
-import io
 from typing import Generator
 from app.ros.robot_status import telemetry_store
 
@@ -12,15 +11,6 @@ try:
     OPENCV_AVAILABLE = True
 except ImportError:
     OPENCV_AVAILABLE = False
-
-# A tiny valid pre-encoded JPEG standby frame (640x480 dark industrial card)
-STANDBY_JPEG_BYTES = (
-    b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xff\xdb\x00C\x00\x08\x06\x06'
-    b'\x07\x06\x05\x08\x07\x07\x07\t\t\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a\x1f'
-    b'\x1e\x1d\x1a\x1c\x1c $.\' ",#\x1c\x1c(7),01444\x1f\'9=82<.342\xff\xc0\x00\x0b\x08\x00\x01\x00\x01'
-    b'\x01\x01\x11\x00\xff\xc4\x00\x1f\x00\x00\x01\x05\x01\x01\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00'
-    b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xbf\x00\xff\xd9'
-)
 
 
 class CameraNodeHandler:
@@ -34,7 +24,6 @@ class CameraNodeHandler:
         """Callback processing ROS2 sensor_msgs/msg/Image into JPEG bytes."""
         try:
             if OPENCV_AVAILABLE:
-                # Convert raw image bytes to numpy array
                 if hasattr(msg, 'data'):
                     frame_data = np.frombuffer(msg.data, dtype=np.uint8)
                     height = getattr(msg, 'height', 480)
@@ -51,7 +40,7 @@ class CameraNodeHandler:
                     else:
                         cv_img = frame_data.reshape((height, width, 3))
 
-                    success, jpeg_buf = cv2.imencode('.jpg', cv_img, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+                    success, jpeg_buf = cv2.imencode('.jpg', cv_img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
                     if success:
                         self._latest_frame_jpeg = jpeg_buf.tobytes()
                         self._last_msg_time = time.time()
@@ -66,36 +55,67 @@ class CameraNodeHandler:
             if self._latest_frame_jpeg and (time.time() - self._last_msg_time < 3.0):
                 frame = self._latest_frame_jpeg
             else:
-                frame = self._create_standby_frame()
+                frame = self._create_bright_test_pattern()
 
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
             time.sleep(0.04)  # ~25 FPS
 
-    def _create_standby_frame(self) -> bytes:
-        """Create high-visibility dark industrial test card when camera topic is standby."""
-        if OPENCV_AVAILABLE:
-            img = np.zeros((480, 640, 3), dtype=np.uint8)
-            img[:] = (32, 17, 11)  # #0B1120 Dark Slate Navy
+    def _create_bright_test_pattern(self) -> bytes:
+        """Create a high-visibility, high-contrast SpaceX industrial test card with color bars and live clock."""
+        if not OPENCV_AVAILABLE:
+            # Fallback tiny JPEG if OpenCV is missing
+            return b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xff\xd9'
 
-            # Draw outer frame
-            cv2.rectangle(img, (20, 20), (620, 460), (59, 41, 30), 2)
-            cv2.rectangle(img, (24, 24), (616, 456), (235, 99, 37), 1)
+        img = np.zeros((480, 640, 3), dtype=np.uint8)
 
-            # Draw status text
-            timestamp = time.strftime("%H:%M:%S")
-            cv2.putText(img, "ROS2 CAMERA STREAM", (160, 200), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (235, 99, 37), 2)
-            cv2.putText(img, "Topic: /camera/image_raw", (185, 240), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
-            cv2.putText(img, f"Status: WAITING FOR ROS2 FRAME [{timestamp}]", (135, 280), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (160, 160, 160), 1)
+        # Deep Royal Blue background (#1E3A8A)
+        img[:] = (138, 58, 30)
 
-            # Draw animated radar pulse indicator
-            pulse_radius = int((time.time() * 20) % 30) + 5
-            cv2.circle(img, (320, 340), pulse_radius, (235, 99, 37), 1)
-            cv2.circle(img, (320, 340), 3, (235, 99, 37), -1)
+        # Draw Grid lines
+        for x in range(0, 640, 40):
+            cv2.line(img, (x, 0), (x, 480), (160, 80, 45), 1)
+        for y in range(0, 480, 40):
+            cv2.line(img, (0, y), (640, y), (160, 80, 45), 1)
 
-            _, jpeg = cv2.imencode('.jpg', img)
-            return jpeg.tobytes()
-        return STANDBY_JPEG_BYTES
+        # Outer Frame
+        cv2.rectangle(img, (15, 15), (625, 465), (255, 255, 255), 2)
+        cv2.rectangle(img, (20, 20), (620, 460), (235, 99, 37), 2)
+
+        # Main Header Text
+        cv2.putText(img, "ROS2 CAMERA STREAM STANDBY", (85, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (255, 255, 255), 2)
+        cv2.putText(img, "Topic: /camera/image_raw", (185, 195), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 215, 0), 2)
+
+        # Ticking Live Clock & Animated Dot
+        timestamp = time.strftime("%H:%M:%S")
+        cv2.putText(img, f"STREAM ACTIVE [{timestamp}]", (160, 250), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+
+        # Red Live Pulse Circle
+        pulse = int((time.time() * 10) % 20) + 5
+        cv2.circle(img, (135, 245), pulse, (0, 0, 255), 2)
+        cv2.circle(img, (135, 245), 5, (0, 0, 255), -1)
+
+        # Subtitle
+        cv2.putText(img, "Waiting for Raspberry Pi Camera Node...", (125, 300), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1)
+
+        # Color Bars at Bottom
+        colors = [
+            (255, 255, 255), # White
+            (0, 255, 255),   # Yellow
+            (255, 255, 0),   # Cyan
+            (0, 255, 0),     # Green
+            (255, 0, 255),   # Magenta
+            (0, 0, 255),     # Red
+            (255, 0, 0)      # Blue
+        ]
+        bar_w = 580 // len(colors)
+        for i, col in enumerate(colors):
+            x1 = 30 + i * bar_w
+            x2 = x1 + bar_w
+            cv2.rectangle(img, (x1, 350), (x2, 430), col, -1)
+
+        _, jpeg = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+        return jpeg.tobytes()
 
 
 camera_handler = CameraNodeHandler()
