@@ -21,14 +21,21 @@ class TopicSubscribersHandler:
     @staticmethod
     def handle_scan(msg):
         try:
-            ranges = list(getattr(msg, "ranges", []))
-            # Cache only min/max/sample ranges to avoid duplicating large arrays in RAM
-            sampled_ranges = ranges[::10] if len(ranges) > 50 else ranges
+            raw_ranges = getattr(msg, "ranges", [])
+            # Filter out Inf / NaN values per ROS2 LaserScan convention
+            clean_ranges = []
+            for r in raw_ranges:
+                val = float(r)
+                if math.isnan(val) or math.isinf(val):
+                    clean_ranges.append(0.0)
+                else:
+                    clean_ranges.append(val)
+
             scan_data = {
-                "angle_min": float(getattr(msg, "angle_min", -3.14)),
-                "angle_max": float(getattr(msg, "angle_max", 3.14)),
-                "angle_increment": float(getattr(msg, "angle_increment", 0.01)),
-                "ranges": sampled_ranges[:360],
+                "angle_min": float(getattr(msg, "angle_min", -3.14159)),
+                "angle_max": float(getattr(msg, "angle_max", 3.14159)),
+                "angle_increment": float(getattr(msg, "angle_increment", 0.0174533)),
+                "ranges": clean_ranges,
             }
             telemetry_store.update_scan(scan_data)
         except Exception as e:
