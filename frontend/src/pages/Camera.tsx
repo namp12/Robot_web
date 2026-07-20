@@ -41,6 +41,8 @@ export const Camera: React.FC = () => {
     }
   };
 
+  const streamUrl = cameraService.getStreamUrl();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -58,11 +60,11 @@ export const Camera: React.FC = () => {
         {/* Main Stream Viewport */}
         <div className="lg:col-span-2">
           <Card title="Live Stream Viewport">
-            <div className="relative aspect-video bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center group min-h-[360px]">
+            <div className="relative aspect-video bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center min-h-[380px]">
               {streaming ? (
                 <>
                   <img
-                    src={cameraService.getStreamUrl()}
+                    src={streamUrl}
                     alt="ROS2 Live Camera Feed"
                     className="w-full h-full object-contain bg-slate-950"
                   />
@@ -109,8 +111,14 @@ export const Camera: React.FC = () => {
           <Card title="Stream Diagnostics">
             <div className="space-y-2 text-xs font-mono">
               <div className="flex justify-between py-1 border-b border-slate-800">
+                <span className="text-slate-400">Stream URL:</span>
+                <span className="text-cyan-400 font-semibold truncate max-w-[180px]" title={streamUrl}>
+                  {streamUrl}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800">
                 <span className="text-slate-400">ROS2 Topic:</span>
-                <span className="text-cyan-400 font-semibold">/camera/image_raw</span>
+                <span className="text-emerald-400 font-semibold">/camera/image_raw</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800">
                 <span className="text-slate-400">Format:</span>
@@ -118,7 +126,7 @@ export const Camera: React.FC = () => {
               </div>
               <div className="flex justify-between py-1">
                 <span className="text-slate-400">Encoding:</span>
-                <span className="text-emerald-400">MJPEG (bgr8)</span>
+                <span className="text-emerald-400">MJPEG Stream (25 FPS)</span>
               </div>
             </div>
           </Card>

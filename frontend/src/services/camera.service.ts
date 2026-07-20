@@ -7,8 +7,10 @@ export const cameraService = {
   },
 
   getStreamUrl: (): string => {
-    const baseURL = api.defaults.baseURL || '/api/v1';
-    return `${baseURL}/camera/stream`;
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    const hostname = window.location.hostname || 'localhost';
+    // Direct stream link to port 8000 bypassing Vite proxy buffering
+    return `${protocol}//${hostname}:8000/api/v1/camera/stream`;
   },
 
   startStream: async () => {
