@@ -11,18 +11,28 @@ except ImportError:
 
 
 class TopicPublishersHandler:
-    """Handler for ROS2 Publishers (/cmd_vel, /camera/control, /slam/control)."""
+    """Handler for ROS2 Publishers (/cmd_vel, /camera/control, /slam/control, /esp32/serial_tx)."""
 
     def __init__(self, node=None):
         self.node = node
         self.cmd_vel_pub = None
         self.camera_ctrl_pub = None
         self.slam_ctrl_pub = None
+        self.esp32_serial_tx_pub = None
 
         if RCLPY_AVAILABLE and self.node:
             self.cmd_vel_pub = self.node.create_publisher(Twist, "/cmd_vel", 10)
             self.camera_ctrl_pub = self.node.create_publisher(String, "/camera/control", 10)
             self.slam_ctrl_pub = self.node.create_publisher(String, "/slam/control", 10)
+            self.esp32_serial_tx_pub = self.node.create_publisher(String, "/esp32/serial_tx", 10)
+
+    def publish_esp32_serial_tx(self, text: str):
+        if not RCLPY_AVAILABLE or not self.esp32_serial_tx_pub:
+            logger.info(f"[Publishers Fallback] /esp32/serial_tx: '{text}'")
+            return
+        msg = String()
+        msg.data = text
+        self.esp32_serial_tx_pub.publish(msg)
 
     def publish_cmd_vel(self, linear_x: float, angular_z: float):
         if not RCLPY_AVAILABLE or not self.cmd_vel_pub:
