@@ -48,11 +48,11 @@ async def send_control_command(
 
     # 2. Translate and publish to custom /esp32/serial_tx topic
     if cmd.linear != 0:
-        speed_percent = int(abs(cmd.linear) * 100)
-        text_cmd = f"tien {speed_percent}" if cmd.linear > 0 else f"lui {speed_percent}"
+        speed_val = int(abs(cmd.linear) * 255)
+        text_cmd = f"tien {speed_val}" if cmd.linear > 0 else f"lui {speed_val}"
     elif cmd.angular != 0:
-        speed_percent = int(abs(cmd.angular) * 100)
-        text_cmd = f"trai {speed_percent}" if cmd.angular > 0 else f"phai {speed_percent}"
+        speed_val = int(abs(cmd.angular) * 255)
+        text_cmd = f"trai {speed_val}" if cmd.angular > 0 else f"phai {speed_val}"
     else:
         text_cmd = "dung"
 
