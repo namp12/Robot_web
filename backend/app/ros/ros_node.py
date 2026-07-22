@@ -53,3 +53,12 @@ class RobotBridgeNode(Node):
         )
 
         logger.info("📡 Subscribed topics: /battery, /scan, /odom, /map, /tf, /camera/image_raw, /esp/status")
+
+        # Initialize publishers handler with active ROS2 node
+        from geometry_msgs.msg import Twist
+        from app.ros.publishers import publishers_handler
+        publishers_handler.node = self
+        publishers_handler.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
+        publishers_handler.camera_ctrl_pub = self.create_publisher(String, "/camera/control", 10)
+        publishers_handler.slam_ctrl_pub = self.create_publisher(String, "/slam/control", 10)
+        logger.info("📡 Initialized publishers for: /cmd_vel, /camera/control, /slam/control")
