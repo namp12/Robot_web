@@ -43,8 +43,8 @@ async def send_control_command(
     current_user: TokenData = Depends(get_current_user)
 ):
     """POST /api/v1/robot/control - Publish movement speed command to /cmd_vel."""
-    publishers_handler.publish_cmd_vel(cmd.linear_x, cmd.angular_z)
-    return {"status": "SUCCESS", "linear_x": cmd.linear_x, "angular_z": cmd.angular_z}
+    publishers_handler.publish_cmd_vel(cmd.linear, cmd.angular)
+    return {"status": "SUCCESS", "linear_x": cmd.linear, "angular_z": cmd.angular}
 
 
 @router.post("/emergency-stop")
@@ -61,4 +61,5 @@ async def set_robot_mode(
     current_user: TokenData = Depends(get_current_user)
 ):
     """POST /api/v1/robot/mode - Set operation mode (MANUAL/AUTO)."""
+    telemetry_store.update_mode(data.mode)
     return {"status": "SUCCESS", "mode": data.mode}

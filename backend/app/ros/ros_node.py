@@ -11,6 +11,7 @@ try:
     from sensor_msgs.msg import BatteryState, LaserScan, Image
     from nav_msgs.msg import Odometry, OccupancyGrid
     from tf2_msgs.msg import TFMessage
+    from std_msgs.msg import String
     RCLPY_AVAILABLE = True
 except ImportError:
     RCLPY_AVAILABLE = False
@@ -47,5 +48,8 @@ class RobotBridgeNode(Node):
         self._sub_camera = self.create_subscription(
             Image, "/camera/image_raw", camera_handler.handle_image_msg, 10
         )
+        self._sub_esp_status = self.create_subscription(
+            String, "/esp/status", subscribers_handler.handle_esp_status, 10
+        )
 
-        logger.info("📡 Subscribed topics: /battery, /scan, /odom, /map, /tf, /camera/image_raw")
+        logger.info("📡 Subscribed topics: /battery, /scan, /odom, /map, /tf, /camera/image_raw, /esp/status")

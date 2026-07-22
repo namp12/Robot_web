@@ -100,5 +100,14 @@ class TopicSubscribersHandler:
         except Exception as e:
             logger.error(f"Error handling /tf: {e}")
 
+    @staticmethod
+    def handle_esp_status(msg):
+        try:
+            status_text = str(getattr(msg, "data", "OFFLINE"))
+            from app.ros.esp_node import esp_handler
+            esp_handler.handle_esp_status(status_text)
+        except Exception as e:
+            logger.error(f"Error handling /esp/status: {e}")
+
 
 subscribers_handler = TopicSubscribersHandler()

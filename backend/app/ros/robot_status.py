@@ -49,6 +49,11 @@ class RobotTelemetryStore:
             self._robot_status = "ONLINE" if connected else "OFFLINE"
             self._last_update = time.time()
 
+    def update_mode(self, mode: str):
+        with self._lock:
+            self._mode = mode
+            self._last_update = time.time()
+
     def update_battery(self, level: float, voltage: float = 24.2, current: float = 3.5):
         with self._lock:
             self._battery_level = level

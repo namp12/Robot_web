@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { Gamepad2, AlertOctagon, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Gauge, RotateCcw } from 'lucide-react';
@@ -9,14 +9,65 @@ export const RobotControl: React.FC = () => {
   const [mode, setMode] = useState<'MANUAL' | 'AUTO'>('MANUAL');
   const [lastCmd, setLastCmd] = useState('IDLE');
 
-  const sendMove = async (linear: number, angular: number, label: string) => {
+  const sendMove = useCallback(async (linear: number, angular: number, label: string) => {
     setLastCmd(label);
     try {
       await robotService.setControlCommand({ linear: linear * speed, angular: angular * speed });
     } catch (e) {
       console.error('Move error', e);
     }
-  };
+  }, [speed]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code) || e.key === ' ') {
+        e.preventDefault();
+      }
+
+      if (e.repeat) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'w':
+        case 'arrowup':
+          sendMove(1.0, 0.0, 'FORWARD');
+          break;
+        case 's':
+        case 'arrowdown':
+          sendMove(-1.0, 0.0, 'BACKWARD');
+          break;
+        case 'a':
+        case 'arrowleft':
+          sendMove(0.0, 1.0, 'LEFT');
+          break;
+        case 'd':
+        case 'arrowright':
+          sendMove(0.0, -1.0, 'RIGHT');
+          break;
+        case ' ':
+          sendMove(0.0, 0.0, 'STOP');
+          break;
+        default:
+          break;
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (['w', 's', 'a', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) {
+        sendMove(0.0, 0.0, 'STOP');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [sendMove]);
 
   const toggleMode = async (newMode: 'MANUAL' | 'AUTO') => {
     setMode(newMode);
