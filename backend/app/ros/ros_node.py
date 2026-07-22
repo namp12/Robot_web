@@ -61,4 +61,5 @@ class RobotBridgeNode(Node):
         publishers_handler.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         publishers_handler.camera_ctrl_pub = self.create_publisher(String, "/camera/control", 10)
         publishers_handler.slam_ctrl_pub = self.create_publisher(String, "/slam/control", 10)
-        logger.info("📡 Initialized publishers for: /cmd_vel, /camera/control, /slam/control")
+        publishers_handler.esp32_serial_tx_pub = self.create_publisher(String, "/esp32/serial_tx", 10)
+        logger.info("📡 Initialized publishers for: /cmd_vel, /camera/control, /slam/control, /esp32/serial_tx")

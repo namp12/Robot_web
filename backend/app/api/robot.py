@@ -42,9 +42,27 @@ async def send_control_command(
     cmd: ControlCommandRequest,
     current_user: TokenData = Depends(get_current_user)
 ):
-    """POST /api/v1/robot/control - Publish movement speed command to /cmd_vel."""
+    """POST /api/v1/robot/control - Publish movement speed command to /cmd_vel and /esp32/serial_tx."""
+    # 1. Publish standard Twist to /cmd_vel
     publishers_handler.publish_cmd_vel(cmd.linear, cmd.angular)
-    return {"status": "SUCCESS", "linear_x": cmd.linear, "angular_z": cmd.angular}
+
+    # 2. Translate and publish to custom /esp32/serial_tx topic
+    if cmd.linear != 0:
+        speed_percent = int(abs(cmd.linear) * 100)
+        text_cmd = f"tien {speed_percent}" if cmd.linear > 0 else f"lui {speed_percent}"
+    elif cmd.angular != 0:
+        speed_percent = int(abs(cmd.angular) * 100)
+        text_cmd = f"trai {speed_percent}" if cmd.angular > 0 else f"phai {speed_percent}"
+    else:
+        text_cmd = "dung"
+
+    publishers_handler.publish_esp32_serial_tx(text_cmd)
+    return {
+        "status": "SUCCESS",
+        "linear": cmd.linear,
+        "angular": cmd.angular,
+        "esp32_command": text_cmd
+    }
 
 
 @router.post("/emergency-stop")
