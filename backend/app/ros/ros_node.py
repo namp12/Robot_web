@@ -62,15 +62,50 @@ class RobotBridgeNode(Node):
         except Exception as e:
             logger.error(f"Error subscribing to IMU: {e}")
 
-        # Subscribe to Front/Rear Distance Sensors (dynamic type resolution)
+        # Subscribe to Front/Rear Distance Sensors (dynamic type resolution with 1s delay)
+        self._distances_resolved = False
+        self._resolve_attempts = 0
+        self._resolve_timer = self.create_timer(1.0, self._resolve_distance_sensors)
+
+        logger.info("📡 Subscribed topics: /battery, /scan, /odom, /map, /tf, /camera/image_raw, /esp/status, /imu/data")
+
+        # Initialize publishers handler with active ROS2 node
+        from geometry_msgs.msg import Twist
+        from app.ros.publishers import publishers_handler
+        publishers_handler.node = self
+        publishers_handler.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
+        publishers_handler.camera_ctrl_pub = self.create_publisher(String, "/camera/control", 10)
+        publishers_handler.slam_ctrl_pub = self.create_publisher(String, "/slam/control", 10)
+        publishers_handler.esp32_serial_tx_pub = self.create_publisher(String, "/esp32/serial_tx", 10)
+        logger.info("📡 Initialized publishers for: /cmd_vel, /camera/control, /slam/control, /esp32/serial_tx")
+
+    def _resolve_distance_sensors(self):
+        if self._distances_resolved:
+            return
+
+        front_type = None
+        rear_type = None
         try:
-            front_type = "std_msgs/msg/Float32"
-            rear_type = "std_msgs/msg/Float32"
             for name, types in self.get_topic_names_and_types():
                 if name == "/sensor/front_distance" and types:
                     front_type = types[0]
                 elif name == "/sensor/rear_distance" and types:
                     rear_type = types[0]
+        except Exception as e:
+            logger.error(f"Error querying topic types: {e}")
+            return
+
+        self._resolve_attempts += 1
+
+        # If both types are resolved, or after 5 attempts, we create subscriptions
+        if (front_type and rear_type) or self._resolve_attempts >= 5:
+            self._distances_resolved = True
+            
+            # Default fallback types
+            if not front_type:
+                front_type = "sensor_msgs/msg/Range"
+            if not rear_type:
+                rear_type = "sensor_msgs/msg/Range"
 
             def resolve_msg_class(type_str: str):
                 if "Range" in type_str:
@@ -83,24 +118,16 @@ class RobotBridgeNode(Node):
             FrontClass = resolve_msg_class(front_type)
             RearClass = resolve_msg_class(rear_type)
 
-            self._sub_front_dist = self.create_subscription(
-                FrontClass, "/sensor/front_distance", subscribers_handler.handle_front_distance, 10
-            )
-            self._sub_rear_dist = self.create_subscription(
-                RearClass, "/sensor/rear_distance", subscribers_handler.handle_rear_distance, 10
-            )
-            logger.info(f"📡 Subscribed to distance sensors using: front={FrontClass.__name__}, rear={RearClass.__name__}")
-        except Exception as e:
-            logger.error(f"Error subscribing to distance sensors: {e}")
+            try:
+                self._sub_front_dist = self.create_subscription(
+                    FrontClass, "/sensor/front_distance", subscribers_handler.handle_front_distance, 10
+                )
+                self._sub_rear_dist = self.create_subscription(
+                    RearClass, "/sensor/rear_distance", subscribers_handler.handle_rear_distance, 10
+                )
+                logger.info(f"📡 Dynamically subscribed to: front={FrontClass.__name__} ({front_type}), rear={RearClass.__name__} ({rear_type})")
+            except Exception as e:
+                logger.error(f"Error creating distance subscriptions: {e}")
 
-        logger.info("📡 Subscribed topics: /battery, /scan, /odom, /map, /tf, /camera/image_raw, /esp/status, /imu/data, /sensor/front_distance, /sensor/rear_distance")
-
-        # Initialize publishers handler with active ROS2 node
-        from geometry_msgs.msg import Twist
-        from app.ros.publishers import publishers_handler
-        publishers_handler.node = self
-        publishers_handler.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
-        publishers_handler.camera_ctrl_pub = self.create_publisher(String, "/camera/control", 10)
-        publishers_handler.slam_ctrl_pub = self.create_publisher(String, "/slam/control", 10)
-        publishers_handler.esp32_serial_tx_pub = self.create_publisher(String, "/esp32/serial_tx", 10)
-        logger.info("📡 Initialized publishers for: /cmd_vel, /camera/control, /slam/control, /esp32/serial_tx")
+            # Destroy the resolver timer
+            self.destroy_timer(self._resolve_timer)
