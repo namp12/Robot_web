@@ -16,9 +16,11 @@ import {
   Activity,
   Layers,
   ShieldCheck,
-  Zap
+  Zap,
+  Volume2
 } from 'lucide-react';
 import useTelemetry from '../hooks/useTelemetry';
+import robotService from '../services/robot.service';
 
 export const Dashboard: React.FC = () => {
   const { telemetry, isConnected } = useTelemetry();
@@ -43,7 +45,7 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-bold tracking-tight text-white font-mono flex items-center gap-2">
               <Zap className="w-6 h-6 text-primary-500" />
-              <span>ROBOT-EXPLORER-01</span>
+              <span>KimQui</span>
             </h1>
             <StatusBadge status={robotStatus} />
             <span className="text-xs px-3 py-1 rounded-full bg-slate-900 border border-slate-700 font-mono text-cyan-400 font-semibold shadow-inner">
@@ -196,6 +198,96 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
           <StatusBadge status={isConnected ? 'ONLINE' : 'OFFLINE'} size="sm" />
+        </div>
+      </div>
+
+      {/* Robot Sensors & Actuators Observer */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* IMU Orientation Widget */}
+        <div className="glass-card p-5 rounded-2xl flex flex-col justify-between space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-slate-900 text-cyan-400 border border-slate-800">
+              <Compass className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-200">IMU MPU Orientation</div>
+              <div className="text-[10px] text-slate-400 font-mono">Quaternion telemetry</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs font-mono text-slate-300">
+            <div>X: <span className="text-cyan-400 font-semibold">{telemetry?.imu?.x?.toFixed(4) ?? '0.0000'}</span></div>
+            <div>Y: <span className="text-cyan-400 font-semibold">{telemetry?.imu?.y?.toFixed(4) ?? '0.0000'}</span></div>
+            <div>Z: <span className="text-cyan-400 font-semibold">{telemetry?.imu?.z?.toFixed(4) ?? '0.0000'}</span></div>
+            <div>W: <span className="text-cyan-400 font-semibold">{telemetry?.imu?.w?.toFixed(4) ?? '1.0000'}</span></div>
+          </div>
+        </div>
+
+        {/* Distance Sensors Widget */}
+        <div className="glass-card p-5 rounded-2xl flex flex-col justify-between space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-slate-900 text-amber-400 border border-slate-800">
+              <Radar className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-200">Range Distance Sensors</div>
+              <div className="text-[10px] text-slate-400 font-mono">Ultrasonic telemetry</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-slate-500 font-bold">Front (Trước)</span>
+              <span className="text-amber-400 font-bold text-sm mt-1">
+                {telemetry?.front_distance ? `${telemetry.front_distance.toFixed(2)} m` : '0.00 m'}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] text-slate-500 font-bold">Rear (Sau)</span>
+              <span className="text-amber-400 font-bold text-sm mt-1">
+                {telemetry?.rear_distance ? `${telemetry.rear_distance.toFixed(2)} m` : '0.00 m'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Horn Control Widget */}
+        <div className="glass-card p-5 rounded-2xl flex flex-col justify-between space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-slate-900 text-rose-500 border border-slate-800">
+              <Volume2 className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-200">Buzzer Horn Actuator</div>
+              <div className="text-[10px] text-slate-400 font-mono">ESP32 audio control</div>
+            </div>
+          </div>
+          <div>
+            <button
+              onMouseDown={async () => {
+                try {
+                  await robotService.setHorn(true);
+                } catch(e) {}
+              }}
+              onMouseUp={async () => {
+                try {
+                  await robotService.setHorn(false);
+                } catch(e) {}
+              }}
+              onTouchStart={async () => {
+                try {
+                  await robotService.setHorn(true);
+                } catch(e) {}
+              }}
+              onTouchEnd={async () => {
+                try {
+                  await robotService.setHorn(false);
+                } catch(e) {}
+              }}
+              className="w-full py-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/40 text-rose-400 border border-rose-800/40 font-semibold text-xs tracking-wider transition-all duration-300 active:scale-95 shadow-md flex items-center justify-center gap-2 select-none"
+            >
+              <Volume2 className="w-4 h-4" />
+              <span>BẤP CÒI (HORN)</span>
+            </button>
+          </div>
         </div>
       </div>
 

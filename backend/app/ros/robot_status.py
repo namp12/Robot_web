@@ -35,6 +35,12 @@ class RobotTelemetryStore:
         self._lidar_status: bool = True
         self._esp32_status: bool = True
 
+        # Sensors & Actuators
+        self._front_distance: float = 0.0
+        self._rear_distance: float = 0.0
+        self._imu: Dict[str, float] = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
+        self._horn: bool = False
+
         # Topic RAM Caches (Latest frame only)
         self._scan_cache: Dict[str, Any] = {"ranges": [2.5] * 360, "angle_min": -3.14, "angle_max": 3.14}
         self._odom_cache: Dict[str, Any] = {"position": {"x": 2.45, "y": -1.12}, "yaw": 45.0, "velocity": {"linear": 0.0, "angular": 0.0}}
@@ -87,6 +93,24 @@ class RobotTelemetryStore:
             self._camera_status = camera
             self._lidar_status = lidar
             self._esp32_status = esp32
+            self._last_update = time.time()
+
+    def update_sensor_distance(self, front: float = None, rear: float = None):
+        with self._lock:
+            if front is not None:
+                self._front_distance = front
+            if rear is not None:
+                self._rear_distance = rear
+            self._last_update = time.time()
+
+    def update_imu(self, x: float, y: float, z: float, w: float):
+        with self._lock:
+            self._imu = {"x": x, "y": y, "z": z, "w": w}
+            self._last_update = time.time()
+
+    def update_horn(self, state: bool):
+        with self._lock:
+            self._horn = state
             self._last_update = time.time()
 
     def update_scan(self, scan_data: Dict[str, Any]):
@@ -152,6 +176,10 @@ class RobotTelemetryStore:
                 "camera_status": self._camera_status,
                 "lidar_status": self._lidar_status,
                 "esp32_status": self._esp32_status,
+                "front_distance": self._front_distance,
+                "rear_distance": self._rear_distance,
+                "imu": dict(self._imu),
+                "horn": self._horn,
                 "scan": dict(self._scan_cache),
                 "odom": dict(self._odom_cache),
                 "map": dict(self._map_cache),

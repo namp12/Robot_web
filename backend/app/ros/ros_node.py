@@ -52,7 +52,48 @@ class RobotBridgeNode(Node):
             String, "/esp/status", subscribers_handler.handle_esp_status, 10
         )
 
-        logger.info("📡 Subscribed topics: /battery, /scan, /odom, /map, /tf, /camera/image_raw, /esp/status")
+        # Subscribe to IMU (MPU)
+        try:
+            from sensor_msgs.msg import Imu
+            self._sub_imu = self.create_subscription(
+                Imu, "/imu/data", subscribers_handler.handle_imu, 10
+            )
+            logger.info("📡 Subscribed to IMU: /imu/data")
+        except Exception as e:
+            logger.error(f"Error subscribing to IMU: {e}")
+
+        # Subscribe to Front/Rear Distance Sensors (dynamic type resolution)
+        try:
+            front_type = "std_msgs/msg/Float32"
+            rear_type = "std_msgs/msg/Float32"
+            for name, types in self.get_topic_names_and_types():
+                if name == "/sensor/front_distance" and types:
+                    front_type = types[0]
+                elif name == "/sensor/rear_distance" and types:
+                    rear_type = types[0]
+
+            def resolve_msg_class(type_str: str):
+                if "Range" in type_str:
+                    from sensor_msgs.msg import Range
+                    return Range
+                else:
+                    from std_msgs.msg import Float32
+                    return Float32
+
+            FrontClass = resolve_msg_class(front_type)
+            RearClass = resolve_msg_class(rear_type)
+
+            self._sub_front_dist = self.create_subscription(
+                FrontClass, "/sensor/front_distance", subscribers_handler.handle_front_distance, 10
+            )
+            self._sub_rear_dist = self.create_subscription(
+                RearClass, "/sensor/rear_distance", subscribers_handler.handle_rear_distance, 10
+            )
+            logger.info(f"📡 Subscribed to distance sensors using: front={FrontClass.__name__}, rear={RearClass.__name__}")
+        except Exception as e:
+            logger.error(f"Error subscribing to distance sensors: {e}")
+
+        logger.info("📡 Subscribed topics: /battery, /scan, /odom, /map, /tf, /camera/image_raw, /esp/status, /imu/data, /sensor/front_distance, /sensor/rear_distance")
 
         # Initialize publishers handler with active ROS2 node
         from geometry_msgs.msg import Twist

@@ -26,7 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-950/60 border border-slate-800">
           <Radio className="w-4 h-4 text-primary-500 animate-pulse" />
-          <span className="text-xs font-mono font-bold text-slate-200">ROBOT-EXPLORER-01</span>
+          <span className="text-xs font-mono font-bold text-slate-200">KimQui</span>
         </div>
 
         <StatusBadge status={robotStatus} size="sm" />

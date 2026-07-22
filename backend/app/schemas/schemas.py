@@ -45,6 +45,10 @@ class ModeSetRequest(BaseModel):
     mode: str = "MANUAL"
 
 
+class HornSetRequest(BaseModel):
+    state: bool = False
+
+
 # Mission Schemas
 class MissionBase(BaseModel):
     mission_name: str

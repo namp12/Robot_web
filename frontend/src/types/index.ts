@@ -126,6 +126,15 @@ export interface TelemetryPacket {
   camera_status: boolean;
   lidar_status: boolean;
   esp32_status: boolean;
+  front_distance: number;
+  rear_distance: number;
+  imu: {
+    x: number;
+    y: number;
+    z: number;
+    w: number;
+  };
+  horn: boolean;
   pose: {
     x: number;
     y: number;

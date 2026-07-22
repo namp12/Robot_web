@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from app.ros.robot_status import telemetry_store
 from app.ros.publishers import publishers_handler
-from app.schemas.schemas import ControlCommandRequest, ModeSetRequest
+from app.schemas.schemas import ControlCommandRequest, ModeSetRequest, HornSetRequest
 from app.utils.auth import get_current_user, TokenData
 
 router = APIRouter(prefix="/robot", tags=["Robot Telemetry & Control"])
@@ -81,3 +81,15 @@ async def set_robot_mode(
     """POST /api/v1/robot/mode - Set operation mode (MANUAL/AUTO)."""
     telemetry_store.update_mode(data.mode)
     return {"status": "SUCCESS", "mode": data.mode}
+
+
+@router.post("/horn")
+async def set_robot_horn(
+    data: HornSetRequest,
+    current_user: TokenData = Depends(get_current_user)
+):
+    """POST /api/v1/robot/horn - Trigger horn (còi) on/off."""
+    cmd_str = "coi 1" if data.state else "coi 0"
+    publishers_handler.publish_esp32_serial_tx(cmd_str)
+    telemetry_store.update_horn(data.state)
+    return {"status": "SUCCESS", "horn": data.state, "esp32_command": cmd_str}

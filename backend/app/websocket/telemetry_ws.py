@@ -42,6 +42,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 "camera_status": snapshot.get("camera_status", True),
                 "lidar_status": snapshot.get("lidar_status", True),
                 "esp32_status": snapshot.get("esp32_status", True),
+                "front_distance": snapshot.get("front_distance", 0.0),
+                "rear_distance": snapshot.get("rear_distance", 0.0),
+                "imu": snapshot.get("imu", {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}),
+                "horn": snapshot.get("horn", False),
             }
 
             await websocket.send_json(payload)

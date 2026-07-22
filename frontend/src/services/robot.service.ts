@@ -24,6 +24,10 @@ export const robotService = {
 
   setMode: async (mode: 'MANUAL' | 'AUTO') => {
     return api.post('/robot/mode', { mode });
+  },
+
+  setHorn: async (state: boolean) => {
+    return api.post('/robot/horn', { state });
   }
 };
 

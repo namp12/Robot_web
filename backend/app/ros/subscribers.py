@@ -109,5 +109,30 @@ class TopicSubscribersHandler:
         except Exception as e:
             logger.error(f"Error handling /esp/status: {e}")
 
+    @staticmethod
+    def handle_front_distance(msg):
+        try:
+            val = float(getattr(msg, "range", getattr(msg, "data", 0.0)))
+            telemetry_store.update_sensor_distance(front=val)
+        except Exception as e:
+            logger.error(f"Error handling /sensor/front_distance: {e}")
+
+    @staticmethod
+    def handle_rear_distance(msg):
+        try:
+            val = float(getattr(msg, "range", getattr(msg, "data", 0.0)))
+            telemetry_store.update_sensor_distance(rear=val)
+        except Exception as e:
+            logger.error(f"Error handling /sensor/rear_distance: {e}")
+
+    @staticmethod
+    def handle_imu(msg):
+        try:
+            q = getattr(msg, "orientation", None)
+            if q:
+                telemetry_store.update_imu(float(q.x), float(q.y), float(q.z), float(q.w))
+        except Exception as e:
+            logger.error(f"Error handling /imu/data: {e}")
+
 
 subscribers_handler = TopicSubscribersHandler()
