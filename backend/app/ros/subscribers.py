@@ -113,6 +113,7 @@ class TopicSubscribersHandler:
     def handle_front_distance(msg):
         try:
             val = float(getattr(msg, "range", getattr(msg, "data", 0.0)))
+            logger.info(f"📥 [Front Sensor] Received distance: {val}")
             telemetry_store.update_sensor_distance(front=val)
         except Exception as e:
             logger.error(f"Error handling /sensor/front_distance: {e}")
@@ -121,6 +122,7 @@ class TopicSubscribersHandler:
     def handle_rear_distance(msg):
         try:
             val = float(getattr(msg, "range", getattr(msg, "data", 0.0)))
+            logger.info(f"📥 [Rear Sensor] Received distance: {val}")
             telemetry_store.update_sensor_distance(rear=val)
         except Exception as e:
             logger.error(f"Error handling /sensor/rear_distance: {e}")
@@ -130,6 +132,7 @@ class TopicSubscribersHandler:
         try:
             q = getattr(msg, "orientation", None)
             if q:
+                logger.info(f"📥 [IMU Sensor] Received orientation: x={q.x:.3f}, y={q.y:.3f}, z={q.z:.3f}, w={q.w:.3f}")
                 telemetry_store.update_imu(float(q.x), float(q.y), float(q.z), float(q.w))
         except Exception as e:
             logger.error(f"Error handling /imu/data: {e}")

@@ -69,6 +69,23 @@ export const RobotControl: React.FC = () => {
     };
   }, [sendMove]);
 
+  const handleSpeedChange = useCallback(async (newSpeed: number) => {
+    setSpeed(newSpeed);
+    if (lastCmd && lastCmd !== 'IDLE' && lastCmd !== 'STOP' && lastCmd !== 'RESET' && lastCmd !== 'EMERGENCY_STOP') {
+      let linear = 0;
+      let angular = 0;
+      if (lastCmd === 'FORWARD') linear = 1.0;
+      else if (lastCmd === 'BACKWARD') linear = -1.0;
+      else if (lastCmd === 'LEFT') angular = 1.0;
+      else if (lastCmd === 'RIGHT') angular = -1.0;
+      try {
+        await robotService.setControlCommand({ linear: linear * newSpeed, angular: angular * newSpeed });
+      } catch (e) {
+        console.error('Speed change error', e);
+      }
+    }
+  }, [lastCmd]);
+
   const toggleMode = async (newMode: 'MANUAL' | 'AUTO') => {
     setMode(newMode);
     await robotService.setMode(newMode);
@@ -163,7 +180,7 @@ export const RobotControl: React.FC = () => {
                 max="1.0"
                 step="0.05"
                 value={speed}
-                onChange={(e) => setSpeed(parseFloat(e.target.value))}
+                onChange={(e) => handleSpeedChange(parseFloat(e.target.value))}
                 className="w-full accent-primary-500 cursor-pointer h-2 bg-slate-700 rounded-lg"
               />
               <div className="flex justify-between text-xs text-slate-500 font-mono">

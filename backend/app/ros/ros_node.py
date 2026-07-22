@@ -95,6 +95,7 @@ class RobotBridgeNode(Node):
             logger.error(f"Error querying topic types: {e}")
             return
 
+        logger.info(f"🔍 [Range Resolver] Attempt {self._resolve_attempts + 1}: Found front_type={front_type}, rear_type={rear_type}")
         self._resolve_attempts += 1
 
         # If both types are resolved, or after 5 attempts, we create subscriptions
