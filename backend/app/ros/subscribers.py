@@ -131,11 +131,43 @@ class TopicSubscribersHandler:
     def handle_imu(msg):
         try:
             q = getattr(msg, "orientation", None)
+            acc = getattr(msg, "linear_acceleration", None)
+            gyro = getattr(msg, "angular_velocity", None)
+
+            accel_dict = {"x": float(acc.x), "y": float(acc.y), "z": float(acc.z)} if acc else None
+            gyro_dict = {"x": float(gyro.x), "y": float(gyro.y), "z": float(gyro.z)} if gyro else None
+
             if q:
-                logger.info(f"📥 [IMU Sensor] Received orientation: x={q.x:.3f}, y={q.y:.3f}, z={q.z:.3f}, w={q.w:.3f}")
-                telemetry_store.update_imu(float(q.x), float(q.y), float(q.z), float(q.w))
+                telemetry_store.update_imu(
+                    float(q.x), float(q.y), float(q.z), float(q.w),
+                    accel=accel_dict, gyro=gyro_dict
+                )
         except Exception as e:
             logger.error(f"Error handling /imu/data: {e}")
+
+    @staticmethod
+    def handle_encoder(msg):
+        try:
+            data_str = str(getattr(msg, "data", "0 0 0 0"))
+            parts = data_str.replace(",", " ").split()
+            if len(parts) >= 4:
+                fl = float(parts[0])
+                fr = float(parts[1])
+                rl = float(parts[2])
+                rr = float(parts[3])
+                telemetry_store.update_encoders(fl, fr, rl, rr)
+        except Exception as e:
+            logger.error(f"Error handling /wheel/encoder: {e}")
+
+    @staticmethod
+    def handle_ai_detection(msg):
+        try:
+            import json
+            data_str = str(getattr(msg, "data", "[]"))
+            detections = json.loads(data_str)
+            telemetry_store.update_ai_detections(detections)
+        except Exception as e:
+            logger.error(f"Error handling /ai/detection: {e}")
 
 
 subscribers_handler = TopicSubscribersHandler()

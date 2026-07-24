@@ -31,7 +31,7 @@ class RobotBridgeNode(Node):
 
         # Subscriptions to topics
         self._sub_battery = self.create_subscription(
-            BatteryState, "/battery", subscribers_handler.handle_battery, 10
+            BatteryState, "/sensor/battery", subscribers_handler.handle_battery, 10
         )
         self._sub_scan = self.create_subscription(
             LaserScan, "/scan", subscribers_handler.handle_scan, 10
@@ -50,6 +50,12 @@ class RobotBridgeNode(Node):
         )
         self._sub_esp_status = self.create_subscription(
             String, "/esp/status", subscribers_handler.handle_esp_status, 10
+        )
+        self._sub_encoder = self.create_subscription(
+            String, "/wheel/encoder", subscribers_handler.handle_encoder, 10
+        )
+        self._sub_ai_detection = self.create_subscription(
+            String, "/ai/detection", subscribers_handler.handle_ai_detection, 10
         )
 
         # Subscribe to IMU (MPU)
@@ -76,8 +82,9 @@ class RobotBridgeNode(Node):
         publishers_handler.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         publishers_handler.camera_ctrl_pub = self.create_publisher(String, "/camera/control", 10)
         publishers_handler.slam_ctrl_pub = self.create_publisher(String, "/slam/control", 10)
-        publishers_handler.esp32_serial_tx_pub = self.create_publisher(String, "/esp32/serial_tx", 10)
-        logger.info("📡 Initialized publishers for: /cmd_vel, /camera/control, /slam/control, /esp32/serial_tx")
+        publishers_handler.esp32_serial_tx_pub = self.create_publisher(String, "/robot/move", 10)
+        publishers_handler.mode_cmd_pub = self.create_publisher(String, "/robot/mode_cmd", 10)
+        logger.info("📡 Initialized publishers for: /cmd_vel, /camera/control, /slam/control, /robot/move, /robot/mode_cmd")
 
     def _resolve_distance_sensors(self):
         if self._distances_resolved:

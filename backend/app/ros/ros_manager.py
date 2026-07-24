@@ -85,6 +85,35 @@ class ROS2Manager:
             telemetry_store.update_battery(next_batt, 24.2, 3.5)
             telemetry_store.update_system(cpu, ram, temp, wifi)
             
+            # Generate mock encoder values (in ticks/second)
+            telemetry_store.update_encoders(
+                random.uniform(10.0, 15.0),
+                random.uniform(10.0, 15.0),
+                random.uniform(10.0, 15.0),
+                random.uniform(10.0, 15.0)
+            )
+
+            # Generate mock raw IMU data
+            accel = {"x": random.uniform(-0.1, 0.1), "y": random.uniform(-0.1, 0.1), "z": 9.81 + random.uniform(-0.05, 0.05)}
+            gyro = {"x": random.uniform(-0.02, 0.02), "y": random.uniform(-0.02, 0.02), "z": random.uniform(-0.02, 0.02)}
+            telemetry_store.update_imu(0.0, 0.0, 0.0, 1.0, accel=accel, gyro=gyro)
+
+            # Generate mock distance sensors (in meters)
+            telemetry_store.update_sensor_distance(
+                front=random.uniform(0.5, 3.0),
+                rear=random.uniform(0.5, 3.0)
+            )
+
+            # Generate mock AI detections
+            detections = [
+                {
+                    "class_name": "person",
+                    "score": random.uniform(0.80, 0.95),
+                    "bbox": [0.15, 0.35, 0.85, 0.65]
+                }
+            ]
+            telemetry_store.update_ai_detections(detections)
+
             time.sleep(1.0)
 
     def stop(self):

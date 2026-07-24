@@ -136,8 +136,28 @@ export interface TelemetryPacket {
     z: number;
     w: number;
   };
+  imu_raw?: {
+    accel: { x: number; y: number; z: number };
+    gyro: { x: number; y: number; z: number };
+  };
+  encoders?: {
+    fl: number;
+    fr: number;
+    rl: number;
+    rr: number;
+  };
+  ai_detections?: Array<{
+    class_name: string;
+    score: number;
+    bbox: [number, number, number, number];
+  }>;
   horn: boolean;
   pose: {
+    x: number;
+    y: number;
+    yaw: number;
+  };
+  goal?: {
     x: number;
     y: number;
     yaw: number;

@@ -43,6 +43,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 "front_distance": snapshot.get("front_distance", 0.0),
                 "rear_distance": snapshot.get("rear_distance", 0.0),
                 "imu": snapshot.get("imu", {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}),
+                "imu_raw": snapshot.get("imu_raw", {
+                    "accel": {"x": 0.0, "y": 0.0, "z": 0.0},
+                    "gyro": {"x": 0.0, "y": 0.0, "z": 0.0}
+                }),
+                "encoders": snapshot.get("encoders", {"fl": 0.0, "fr": 0.0, "rl": 0.0, "rr": 0.0}),
+                "ai_detections": snapshot.get("ai_detections", []),
                 "horn": snapshot.get("horn", False),
             }
 

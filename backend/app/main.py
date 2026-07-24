@@ -42,7 +42,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register API v1 Routers & WebSocket Endpoint
+# Register API Routers under /api and /api/v1 & WebSocket Endpoint
+app.include_router(api_router, prefix="/api")
 app.include_router(api_router, prefix=settings.API_V1_STR)
 app.include_router(telemetry_ws.router)
 

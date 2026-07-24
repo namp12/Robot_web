@@ -19,7 +19,7 @@ export const robotService = {
   },
 
   setControlCommand: async (cmd: { command: string; speed: number }) => {
-    return api.post('/robot/control', cmd);
+    return api.post('/robot/move', cmd);
   },
 
   setMode: async (mode: 'MANUAL' | 'AUTO' | 'ROS') => {

@@ -39,6 +39,12 @@ class RobotTelemetryStore:
         self._front_distance: float = 0.0
         self._rear_distance: float = 0.0
         self._imu: Dict[str, float] = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
+        self._imu_raw: Dict[str, Any] = {
+            "accel": {"x": 0.0, "y": 0.0, "z": 0.0},
+            "gyro": {"x": 0.0, "y": 0.0, "z": 0.0}
+        }
+        self._encoders: Dict[str, float] = {"fl": 0.0, "fr": 0.0, "rl": 0.0, "rr": 0.0}
+        self._ai_detections: List[Dict[str, Any]] = []
         self._horn: bool = False
 
         # Topic RAM Caches (Latest frame only)
@@ -103,9 +109,23 @@ class RobotTelemetryStore:
                 self._rear_distance = rear
             self._last_update = time.time()
 
-    def update_imu(self, x: float, y: float, z: float, w: float):
+    def update_imu(self, x: float, y: float, z: float, w: float, accel: dict = None, gyro: dict = None):
         with self._lock:
             self._imu = {"x": x, "y": y, "z": z, "w": w}
+            if accel:
+                self._imu_raw["accel"] = accel
+            if gyro:
+                self._imu_raw["gyro"] = gyro
+            self._last_update = time.time()
+
+    def update_encoders(self, fl: float, fr: float, rl: float, rr: float):
+        with self._lock:
+            self._encoders = {"fl": fl, "fr": fr, "rl": rl, "rr": rr}
+            self._last_update = time.time()
+
+    def update_ai_detections(self, detections: List[Dict[str, Any]]):
+        with self._lock:
+            self._ai_detections = detections
             self._last_update = time.time()
 
     def update_horn(self, state: bool):
@@ -179,6 +199,9 @@ class RobotTelemetryStore:
                 "front_distance": self._front_distance,
                 "rear_distance": self._rear_distance,
                 "imu": dict(self._imu),
+                "imu_raw": dict(self._imu_raw),
+                "encoders": dict(self._encoders),
+                "ai_detections": list(self._ai_detections),
                 "horn": self._horn,
                 "scan": dict(self._scan_cache),
                 "odom": dict(self._odom_cache),

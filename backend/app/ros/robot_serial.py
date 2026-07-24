@@ -7,7 +7,7 @@ try:
     import rclpy
     from rclpy.node import Node
     from std_msgs.msg import String
-    from sensor_msgs.msg import BatteryState
+    from sensor_msgs.msg import BatteryState, Imu, Range
     RCLPY_AVAILABLE = True
 except ImportError:
     RCLPY_AVAILABLE = False
@@ -49,16 +49,20 @@ class RobotSerialNode(Node):
 
         # Subscriptions
         self._sub_tx = self.create_subscription(
-            String, "/esp32/serial_tx", self.handle_serial_tx, 10
+            String, "/robot/move", self.handle_serial_tx, 10
         )
 
         # Publishers
         self._pub_esp_status = self.create_publisher(String, "/esp/status", 10)
-        self._pub_battery = self.create_publisher(BatteryState, "/battery", 10)
+        self._pub_battery = self.create_publisher(BatteryState, "/sensor/battery", 10)
+        self._pub_imu = self.create_publisher(Imu, "/imu/data", 10)
+        self._pub_front_dist = self.create_publisher(Range, "/sensor/front_distance", 10)
+        self._pub_rear_dist = self.create_publisher(Range, "/sensor/rear_distance", 10)
+        self._pub_encoder = self.create_publisher(String, "/wheel/encoder", 10)
 
         # Timer to read from serial port (approx 50Hz)
         self.create_timer(0.02, self.read_serial_rx)
-        logger.info("📡 Subscribed to: /esp32/serial_tx. Publishing to: /esp/status, /battery")
+        logger.info("📡 Subscribed to: /robot/move. Publishing to: /esp/status, /sensor/battery, /wheel/encoder")
 
     def handle_serial_tx(self, msg: String):
         """Callback for messages to send to the ESP32."""
@@ -117,6 +121,58 @@ class RobotSerialNode(Node):
                 self._pub_battery.publish(battery_msg)
             except (ValueError, IndexError) as e:
                 logger.error(f"Failed to parse battery telemetry line '{line}': {e}")
+        elif header == "RANGE" and len(parts) >= 3:
+            try:
+                front_val = float(parts[1])
+                rear_val = float(parts[2])
+
+                # Publish front range
+                front_msg = Range()
+                front_msg.header.stamp = self.get_clock().now().to_msg()
+                front_msg.header.frame_id = "front_sensor"
+                front_msg.radiation_type = Range.ULTRASONIC
+                front_msg.field_of_view = 0.5
+                front_msg.min_range = 0.02
+                front_msg.max_range = 4.0
+                front_msg.range = front_val
+                self._pub_front_dist.publish(front_msg)
+
+                # Publish rear range
+                rear_msg = Range()
+                rear_msg.header.stamp = self.get_clock().now().to_msg()
+                rear_msg.header.frame_id = "rear_sensor"
+                rear_msg.radiation_type = Range.ULTRASONIC
+                rear_msg.field_of_view = 0.5
+                rear_msg.min_range = 0.02
+                rear_msg.max_range = 4.0
+                rear_msg.range = rear_val
+                self._pub_rear_dist.publish(rear_msg)
+            except (ValueError, IndexError) as e:
+                logger.error(f"Failed to parse range telemetry line '{line}': {e}")
+        elif header == "IMU" and len(parts) >= 5:
+            try:
+                qx = float(parts[1])
+                qy = float(parts[2])
+                qz = float(parts[3])
+                qw = float(parts[4])
+
+                imu_msg = Imu()
+                imu_msg.header.stamp = self.get_clock().now().to_msg()
+                imu_msg.header.frame_id = "imu_link"
+                imu_msg.orientation.x = qx
+                imu_msg.orientation.y = qy
+                imu_msg.orientation.z = qz
+                imu_msg.orientation.w = qw
+                self._pub_imu.publish(imu_msg)
+            except (ValueError, IndexError) as e:
+                logger.error(f"Failed to parse IMU telemetry line '{line}': {e}")
+        elif header == "ENCODER" and len(parts) >= 5:
+            try:
+                encoder_msg = String()
+                encoder_msg.data = " ".join(parts[1:5])
+                self._pub_encoder.publish(encoder_msg)
+            except Exception as e:
+                logger.error(f"Failed to publish encoder message: {e}")
 
 
 def main(args=None):
