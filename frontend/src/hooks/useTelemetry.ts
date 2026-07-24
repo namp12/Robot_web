@@ -7,6 +7,8 @@ const defaultTelemetry: TelemetryPacket = {
   robot_status: 'ONLINE',
   mode: 'MANUAL',
   battery: 88,
+  voltage: 24.2,
+  current: 3.5,
   cpu: 34.5,
   ram: 52.5,
   temperature: 48.5,

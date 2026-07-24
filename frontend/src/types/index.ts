@@ -119,6 +119,8 @@ export interface TelemetryPacket {
   robot_status: RobotStatus['status'];
   mode: RobotStatus['mode'];
   battery: number;
+  voltage?: number;
+  current?: number;
   cpu: number;
   ram: number;
   temperature: number;

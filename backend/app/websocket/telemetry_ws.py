@@ -23,11 +23,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 "scan": snapshot.get("scan", {}),
                 "odom": snapshot.get("odom", {}),
                 "map": snapshot.get("map", {}),
-                "battery": {
-                    "level": snapshot.get("battery", 88.0),
-                    "voltage": snapshot.get("voltage", 24.2),
-                    "current": snapshot.get("current", 3.5),
-                },
+                "battery": snapshot.get("battery", 88.0),
+                "voltage": snapshot.get("voltage", 24.2),
+                "current": snapshot.get("current", 3.5),
                 "status": "connected" if snapshot.get("connected") else "disconnected",
                 # Include standard telemetry fields for React Dashboard compatibility
                 "timestamp": snapshot.get("timestamp"),
