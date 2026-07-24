@@ -42,25 +42,80 @@ async def send_control_command(
     cmd: ControlCommandRequest,
     current_user: TokenData = Depends(get_current_user)
 ):
-    """POST /api/v1/robot/control - Publish movement speed command to /cmd_vel and /esp32/serial_tx."""
-    # 1. Publish standard Twist to /cmd_vel
-    publishers_handler.publish_cmd_vel(cmd.linear, cmd.angular)
+    """POST /api/v1/robot/control - Publish movement command to /cmd_vel and /esp32/serial_tx."""
+    # 1. Enforce Mode Manager Restrictions
+    current_mode = telemetry_store.get_snapshot().get("mode", "MANUAL")
+    if current_mode == "ROS":
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Manual control blocked: Robot is in ROS mode")
+    elif current_mode == "AUTO":
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Manual control blocked: Robot is in AUTO mode")
 
-    # 2. Translate and publish to custom /esp32/serial_tx topic
-    if cmd.linear != 0:
-        speed_val = int(abs(cmd.linear) * 255)
-        text_cmd = f"tien {speed_val}" if cmd.linear > 0 else f"lui {speed_val}"
-    elif cmd.angular != 0:
-        speed_val = int(abs(cmd.angular) * 255)
-        text_cmd = f"trai {speed_val}" if cmd.angular > 0 else f"phai {speed_val}"
-    else:
-        text_cmd = "dung"
+    # 2. Validate Command
+    VALID_COMMANDS = {
+        "FORWARD", "BACKWARD", "STRAFE_LEFT", "STRAFE_RIGHT",
+        "DIAGONAL_FRONT_LEFT", "DIAGONAL_FRONT_RIGHT",
+        "DIAGONAL_REAR_LEFT", "DIAGONAL_REAR_RIGHT",
+        "ROTATE_LEFT", "ROTATE_RIGHT", "STOP"
+    }
+    command = cmd.command.upper()
+    if command not in VALID_COMMANDS:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=f"Invalid control command: {cmd.command}")
 
+    # 3. Handle Speed Conversion
+    speed = max(0, min(100, cmd.speed))
+    s = speed / 100.0
+    v_max = 1.0  # max linear speed (m/s)
+    w_max = 1.5  # max angular speed (rad/s)
+
+    linear_x = 0.0
+    linear_y = 0.0
+    angular_z = 0.0
+
+    if command == "FORWARD":
+        linear_x = v_max * s
+    elif command == "BACKWARD":
+        linear_x = -v_max * s
+    elif command == "STRAFE_LEFT":
+        linear_y = v_max * s
+    elif command == "STRAFE_RIGHT":
+        linear_y = -v_max * s
+    elif command == "DIAGONAL_FRONT_LEFT":
+        linear_x = v_max * s * 0.707
+        linear_y = v_max * s * 0.707
+    elif command == "DIAGONAL_FRONT_RIGHT":
+        linear_x = v_max * s * 0.707
+        linear_y = -v_max * s * 0.707
+    elif command == "DIAGONAL_REAR_LEFT":
+        linear_x = -v_max * s * 0.707
+        linear_y = v_max * s * 0.707
+    elif command == "DIAGONAL_REAR_RIGHT":
+        linear_x = -v_max * s * 0.707
+        linear_y = -v_max * s * 0.707
+    elif command == "ROTATE_LEFT":
+        angular_z = w_max * s
+    elif command == "ROTATE_RIGHT":
+        angular_z = -w_max * s
+
+    # 4. Publish standard Twist to /cmd_vel
+    publishers_handler.publish_cmd_vel(linear_x, linear_y, angular_z)
+
+    # 5. Translate and publish to custom /esp32/serial_tx topic
+    pwm_val = int(s * 255)
+    text_cmd = f"{command} {pwm_val}"
     publishers_handler.publish_esp32_serial_tx(text_cmd)
+
     return {
         "status": "SUCCESS",
-        "linear": cmd.linear,
-        "angular": cmd.angular,
+        "command": command,
+        "speed": speed,
+        "twist": {
+            "linear_x": linear_x,
+            "linear_y": linear_y,
+            "angular_z": angular_z
+        },
         "esp32_command": text_cmd
     }
 
@@ -70,6 +125,8 @@ async def emergency_stop(current_user: TokenData = Depends(get_current_user)):
     """POST /api/v1/robot/emergency-stop - Trigger E-STOP."""
     telemetry_store.set_emergency_stop()
     publishers_handler.emergency_stop()
+    # Also notify ESP32 to STOP immediately
+    publishers_handler.publish_esp32_serial_tx("STOP 0")
     return {"status": "EMERGENCY_STOP_ACTIVATED"}
 
 
@@ -78,9 +135,13 @@ async def set_robot_mode(
     data: ModeSetRequest,
     current_user: TokenData = Depends(get_current_user)
 ):
-    """POST /api/v1/robot/mode - Set operation mode (MANUAL/AUTO)."""
-    telemetry_store.update_mode(data.mode)
-    return {"status": "SUCCESS", "mode": data.mode}
+    """POST /api/v1/robot/mode - Set operation mode (MANUAL/AUTO/ROS)."""
+    mode = data.mode.upper()
+    if mode not in ["MANUAL", "AUTO", "ROS"]:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=f"Invalid operation mode: {data.mode}")
+    telemetry_store.update_mode(mode)
+    return {"status": "SUCCESS", "mode": mode}
 
 
 @router.post("/horn")

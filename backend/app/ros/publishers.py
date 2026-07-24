@@ -34,17 +34,18 @@ class TopicPublishersHandler:
         msg.data = text
         self.esp32_serial_tx_pub.publish(msg)
 
-    def publish_cmd_vel(self, linear_x: float, angular_z: float):
+    def publish_cmd_vel(self, linear_x: float, linear_y: float, angular_z: float):
         if not RCLPY_AVAILABLE or not self.cmd_vel_pub:
-            logger.info(f"[Publishers Fallback] CmdVel: linear={linear_x}, angular={angular_z}")
+            logger.info(f"[Publishers Fallback] CmdVel: linear_x={linear_x}, linear_y={linear_y}, angular_z={angular_z}")
             return
         msg = Twist()
         msg.linear.x = float(linear_x)
+        msg.linear.y = float(linear_y)
         msg.angular.z = float(angular_z)
         self.cmd_vel_pub.publish(msg)
 
     def emergency_stop(self):
-        self.publish_cmd_vel(0.0, 0.0)
+        self.publish_cmd_vel(0.0, 0.0, 0.0)
         logger.warning("🚨 [Publishers] Emergency stop /cmd_vel=0 published!")
 
 

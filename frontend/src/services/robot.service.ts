@@ -18,11 +18,11 @@ export const robotService = {
     return api.post('/robot/emergency-stop');
   },
 
-  setControlCommand: async (cmd: { linear: number; angular: number }) => {
+  setControlCommand: async (cmd: { command: string; speed: number }) => {
     return api.post('/robot/control', cmd);
   },
 
-  setMode: async (mode: 'MANUAL' | 'AUTO') => {
+  setMode: async (mode: 'MANUAL' | 'AUTO' | 'ROS') => {
     return api.post('/robot/mode', { mode });
   },
 

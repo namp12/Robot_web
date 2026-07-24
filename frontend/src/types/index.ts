@@ -2,8 +2,8 @@
 
 export interface RobotStatus {
   robot_id: number;
-  status: 'ONLINE' | 'OFFLINE' | 'EMERGENCY_STOP' | 'AUTONOMOUS' | 'MANUAL';
-  mode: 'MANUAL' | 'AUTO';
+  status: 'ONLINE' | 'OFFLINE' | 'EMERGENCY_STOP' | 'AUTONOMOUS' | 'MANUAL' | 'ROS';
+  mode: 'MANUAL' | 'AUTO' | 'ROS';
   battery_level: number;
   voltage: number;
   current: number;

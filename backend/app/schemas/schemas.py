@@ -37,12 +37,12 @@ class BatteryStatusResponse(BaseModel):
 
 
 class ControlCommandRequest(BaseModel):
-    linear: float = 0.0
-    angular: float = 0.0
+    command: str
+    speed: int = 60  # Percentage 0-100
 
 
 class ModeSetRequest(BaseModel):
-    mode: str = "MANUAL"
+    mode: str = "MANUAL"  # MANUAL, AUTO, ROS
 
 
 class HornSetRequest(BaseModel):
