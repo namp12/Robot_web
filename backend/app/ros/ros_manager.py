@@ -104,6 +104,55 @@ class ROS2Manager:
                 rear=random.uniform(0.5, 3.0)
             )
 
+            # Generate mock LiDAR scan data (720 ranges forming a rectangular room contour)
+            mock_ranges = []
+            import math
+            for idx in range(720):
+                angle = -math.pi + idx * (2 * math.pi / 720)
+                # Box model room projection
+                cos_val = abs(math.cos(angle))
+                sin_val = abs(math.sin(angle))
+                r_box = 2.5 / max(0.1, max(cos_val, sin_val))
+                # Add noise
+                r_val = r_box + random.uniform(-0.06, 0.06)
+                mock_ranges.append(min(12.0, max(0.1, r_val)))
+
+            scan_data = {
+                "angle_min": -3.14159,
+                "angle_max": 3.14159,
+                "angle_increment": 0.0087266,
+                "ranges": mock_ranges
+            }
+            telemetry_store.update_scan(scan_data)
+
+            # Generate mock occupancy grid map
+            if not snap.get("map") or not snap.get("map").get("data"):
+                width = 100
+                height = 100
+                map_data = []
+                for y in range(height):
+                    for x in range(width):
+                        if x == 0 or x == 99 or y == 0 or y == 99:
+                            map_data.append(100) # Wall border
+                        elif (30 < x < 42 and 30 < y < 42) or (60 < x < 72 and 60 < y < 72):
+                            map_data.append(100) # Structural pillars
+                        elif 5 < x < 95 and 5 < y < 95:
+                            map_data.append(0)   # Open floor
+                        else:
+                            map_data.append(-1)  # Unknown boundary
+                
+                mock_map = {
+                    "resolution": 0.05,
+                    "width": width,
+                    "height": height,
+                    "origin": {
+                        "x": -2.5,
+                        "y": -2.5
+                    },
+                    "data": map_data
+                }
+                telemetry_store.update_map_metadata(mock_map)
+
             # Generate mock AI detections
             detections = [
                 {

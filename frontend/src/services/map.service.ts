@@ -26,8 +26,8 @@ export const mapService = {
     return api.post('/slam/stop');
   },
 
-  saveSLAMMap: async (mapName: string) => {
-    return api.post('/slam/save', { map_name: mapName });
+  saveSLAMMap: async (mapName: string, savePath?: string) => {
+    return api.post('/slam/save', { map_name: mapName, save_path: savePath });
   },
 };
 

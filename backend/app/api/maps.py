@@ -40,4 +40,7 @@ async def stop_slam():
 
 @router.post("/slam/save")
 async def save_slam(data: dict):
-    return await map_service.saveSLAMMap(data.get("map_name", "new_map"))
+    return await map_service.saveSLAMMap(
+        data.get("map_name", "new_map"),
+        save_path=data.get("save_path")
+    )
