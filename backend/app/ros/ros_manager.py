@@ -26,6 +26,9 @@ class ROS2Manager:
         if not RCLPY_AVAILABLE:
             logger.warning("⚠️ [ROS2 Manager] rclpy library is not available. Operating in Fallback/Simulation mode.")
             telemetry_store.update_connection(True)
+            self._running = True
+            self._thread = threading.Thread(target=self._sim_loop, daemon=True)
+            self._thread.start()
             return
 
         if self._running:
@@ -59,6 +62,30 @@ class ROS2Manager:
             logger.error(f"Error in ROS2 spin loop: {e}")
         finally:
             logger.info("🛑 [ROS2 Manager] Spin loop stopped.")
+
+    def _sim_loop(self):
+        logger.info("🔄 [ROS2 Manager] Fallback simulation loop active...")
+        import random
+        import time
+        while self._running:
+            # Refresh connection timestamp to stay ONLINE
+            telemetry_store.update_connection(True)
+            
+            # Fetch snapshot to modify fields
+            snap = telemetry_store.get_snapshot()
+            current_batt = snap.get("battery", 88.0)
+            next_batt = max(5.0, current_batt - 0.01) if current_batt > 5.0 else 99.0
+
+            # Generate random numbers for telemetry
+            cpu = random.uniform(25.0, 45.0)
+            ram = random.uniform(50.0, 55.0)
+            temp = random.uniform(45.0, 50.0)
+            wifi = random.randint(85, 95)
+
+            telemetry_store.update_battery(next_batt, 24.2, 3.5)
+            telemetry_store.update_system(cpu, ram, temp, wifi)
+            
+            time.sleep(1.0)
 
     def stop(self):
         self._running = False
