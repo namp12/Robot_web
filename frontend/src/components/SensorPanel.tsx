@@ -1,7 +1,7 @@
 import React from 'react';
 import Card from './Card';
 import useTelemetry from '../hooks/useTelemetry';
-import { Shield, Disc, ArrowDown, ArrowUp } from 'lucide-react';
+import { Shield, Route, ArrowDown, ArrowUp } from 'lucide-react';
 
 export const SensorPanel: React.FC = () => {
   const { telemetry } = useTelemetry();
@@ -14,8 +14,13 @@ export const SensorPanel: React.FC = () => {
   const accel = imuRaw.accel;
   const gyro = imuRaw.gyro;
 
-  // Encoder Data
-  const encoders = telemetry?.encoders || { fl: 0.0, fr: 0.0, rl: 0.0, rr: 0.0 };
+  // Euler Orientation angles read directly from telemetry
+  const roll = telemetry?.roll ?? 0.0;
+  const pitch = telemetry?.pitch ?? 0.0;
+  const yaw = telemetry?.yaw ?? 0.0;
+
+  // Travel distance
+  const encoderDistance = telemetry?.encoder_distance ?? 0.0;
 
   // Distance Data
   const frontDist = telemetry?.front_distance ?? 0.0;
@@ -65,31 +70,54 @@ export const SensorPanel: React.FC = () => {
               </div>
             </div>
           </div>
+
+          <div>
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold font-mono">
+              Orientation Angles (Euler)
+            </div>
+            <div className="grid grid-cols-3 gap-2 mt-1.5 text-xs font-mono">
+              <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-900">
+                <span className="text-slate-500 block">Roll</span>
+                <span className="text-slate-300 font-bold">{roll.toFixed(1)}°</span>
+              </div>
+              <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-900">
+                <span className="text-slate-500 block">Pitch</span>
+                <span className="text-slate-300 font-bold">{pitch.toFixed(1)}°</span>
+              </div>
+              <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-900">
+                <span className="text-slate-500 block">Yaw</span>
+                <span className="text-slate-300 font-bold">{yaw.toFixed(1)}°</span>
+              </div>
+            </div>
+          </div>
         </div>
       </Card>
 
-      {/* Wheel Encoders Card */}
-      <Card title="Wheel Encoders" icon={<Disc className="w-5 h-5 text-accent-cyan" />}>
-        <div className="grid grid-cols-2 gap-3 p-1 text-xs font-mono">
-          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-900/60 relative overflow-hidden">
-            <span className="text-slate-500 block">Front Left (FL)</span>
-            <span className="text-lg font-bold text-slate-200 mt-1 block">{encoders.fl.toFixed(1)} <span className="text-[10px] text-slate-500">t/s</span></span>
-            <div className="absolute right-2 bottom-2 w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></div>
+      {/* Odometer Card */}
+      <Card title="Odometer" icon={<Route className="w-5 h-5 text-accent-cyan" />}>
+        <div className="p-1 flex flex-col justify-between h-full min-h-[180px]">
+          <div>
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold font-mono mb-2">
+              Travel Distance
+            </div>
+            <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-900/60 relative overflow-hidden flex items-center justify-between">
+              <div>
+                <span className="text-slate-500 block text-xs font-mono">Total Distance</span>
+                <span className="text-2xl font-extrabold text-accent-cyan tracking-tight mt-1 block font-mono">
+                  {encoderDistance.toFixed(2)} <span className="text-xs font-normal text-slate-400">m</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <span className="text-[10px] text-emerald-400 font-semibold font-mono animate-pulse">Active</span>
+              </div>
+            </div>
           </div>
-          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-900/60 relative overflow-hidden">
-            <span className="text-slate-500 block">Front Right (FR)</span>
-            <span className="text-lg font-bold text-slate-200 mt-1 block">{encoders.fr.toFixed(1)} <span className="text-[10px] text-slate-500">t/s</span></span>
-            <div className="absolute right-2 bottom-2 w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></div>
-          </div>
-          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-900/60 relative overflow-hidden">
-            <span className="text-slate-500 block">Rear Left (RL)</span>
-            <span className="text-lg font-bold text-slate-200 mt-1 block">{encoders.rl.toFixed(1)} <span className="text-[10px] text-slate-500">t/s</span></span>
-            <div className="absolute right-2 bottom-2 w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></div>
-          </div>
-          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-900/60 relative overflow-hidden">
-            <span className="text-slate-500 block">Rear Right (RR)</span>
-            <span className="text-lg font-bold text-slate-200 mt-1 block">{encoders.rr.toFixed(1)} <span className="text-[10px] text-slate-500">t/s</span></span>
-            <div className="absolute right-2 bottom-2 w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></div>
+          <div className="text-[10px] text-slate-500 font-mono mt-4 pt-2 border-t border-slate-900/60">
+            Sensor Topic: <span className="text-slate-400">/sensor/encoder_distance</span>
           </div>
         </div>
       </Card>

@@ -146,6 +146,10 @@ export interface TelemetryPacket {
     rl: number;
     rr: number;
   };
+  encoder_distance?: number;
+  roll?: number;
+  pitch?: number;
+  yaw?: number;
   ai_detections?: Array<{
     class_name: string;
     score: number;
