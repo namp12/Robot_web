@@ -209,7 +209,16 @@ class ROS2Manager:
                                     
                                     # Update mode & status
                                     if "mode" in tel:
-                                        telemetry_store.update_mode(tel["mode"].upper())
+                                        m = tel["mode"].upper()
+                                        if "MANUAL" in m:
+                                            m_mapped = "MANUAL"
+                                        elif "AUTO" in m:
+                                            m_mapped = "AUTO"
+                                        elif "ROS" in m:
+                                            m_mapped = "ROS"
+                                        else:
+                                            m_mapped = m
+                                        telemetry_store.update_mode(m_mapped)
                                     
                                     # Update distance sensors
                                     front = tel.get("front_distance", 0.0)

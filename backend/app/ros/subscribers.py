@@ -131,7 +131,15 @@ class TopicSubscribersHandler:
     def handle_esp_mode(msg):
         try:
             mode_text = str(getattr(msg, "data", "MANUAL")).upper()
-            telemetry_store.update_mode(mode_text)
+            if "MANUAL" in mode_text:
+                mapped_mode = "MANUAL"
+            elif "AUTO" in mode_text:
+                mapped_mode = "AUTO"
+            elif "ROS" in mode_text:
+                mapped_mode = "ROS"
+            else:
+                mapped_mode = mode_text
+            telemetry_store.update_mode(mapped_mode)
         except Exception as e:
             logger.error(f"Error handling /esp32/mode: {e}")
 
