@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
+    # Remote ROS2 WebSocket Bridge URL (used when rclpy is unavailable)
+    ROBOT_WS_URL: str = "ws://192.168.1.253:8080"
+
     model_config = ConfigDict(
         env_file=".env",
         extra="ignore"
@@ -34,3 +37,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+

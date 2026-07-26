@@ -24,11 +24,19 @@ class ROS2Manager:
 
     def start(self):
         if not RCLPY_AVAILABLE:
-            logger.warning("⚠️ [ROS2 Manager] rclpy library is not available. Operating in Fallback/Simulation mode.")
-            telemetry_store.update_connection(True)
-            self._running = True
-            self._thread = threading.Thread(target=self._sim_loop, daemon=True)
-            self._thread.start()
+            from app.config.settings import settings
+            robot_ws_url = getattr(settings, "ROBOT_WS_URL", None)
+            if robot_ws_url:
+                logger.warning(f"🔌 [ROS2 Manager] rclpy library is not available. Connecting to remote robot WebSocket at {robot_ws_url}...")
+                self._running = True
+                self._thread = threading.Thread(target=self._ws_client_loop, args=(robot_ws_url,), daemon=True)
+                self._thread.start()
+            else:
+                logger.warning("⚠️ [ROS2 Manager] rclpy library is not available and ROBOT_WS_URL not configured. Operating in Fallback/Simulation mode.")
+                telemetry_store.update_connection(True)
+                self._running = True
+                self._thread = threading.Thread(target=self._sim_loop, daemon=True)
+                self._thread.start()
             return
 
         if self._running:
@@ -97,6 +105,15 @@ class ROS2Manager:
             accel = {"x": random.uniform(-0.1, 0.1), "y": random.uniform(-0.1, 0.1), "z": 9.81 + random.uniform(-0.05, 0.05)}
             gyro = {"x": random.uniform(-0.02, 0.02), "y": random.uniform(-0.02, 0.02), "z": random.uniform(-0.02, 0.02)}
             telemetry_store.update_imu(0.0, 0.0, 0.0, 1.0, accel=accel, gyro=gyro)
+            telemetry_store.update_euler_angles(
+                random.uniform(-5.0, 5.0),  # Roll
+                random.uniform(-5.0, 5.0),  # Pitch
+                random.uniform(0.0, 360.0)  # Yaw
+            )
+
+            # Update mock encoder distance incrementally
+            current_dist = snap.get("encoder_distance", 0.0)
+            telemetry_store.update_encoder_distance(current_dist + random.uniform(0.01, 0.05))
 
             # Generate mock distance sensors (in meters)
             telemetry_store.update_sensor_distance(
@@ -164,6 +181,70 @@ class ROS2Manager:
             telemetry_store.update_ai_detections(detections)
 
             time.sleep(1.0)
+
+    def _ws_client_loop(self, url: str):
+        import asyncio
+        import json
+        import websockets
+        from app.ros.publishers import publishers_handler
+
+        async def run():
+            while self._running:
+                try:
+                    logger.info(f"Connecting to remote robot WS: {url}...")
+                    async with websockets.connect(url, ping_interval=10, ping_timeout=10) as ws:
+                        logger.info("✅ Connected to remote robot WebSocket!")
+                        telemetry_store.update_connection(True)
+                        publishers_handler.set_ws_client(ws)
+
+                        async for message in ws:
+                            try:
+                                data = json.loads(message)
+                                if data.get("type") == "telemetry":
+                                    tel = data.get("data", {})
+                                    
+                                    # Update battery
+                                    battery = tel.get("battery", 88.0)
+                                    telemetry_store.update_battery(battery)
+                                    
+                                    # Update mode & status
+                                    if "mode" in tel:
+                                        telemetry_store.update_mode(tel["mode"].upper())
+                                    
+                                    # Update distance sensors
+                                    front = tel.get("front_distance", 0.0)
+                                    rear = tel.get("rear_distance", 0.0)
+                                    telemetry_store.update_sensor_distance(front=front, rear=rear)
+                                    
+                                    # Update IMU (using roll/pitch/yaw values)
+                                    yaw = tel.get("yaw", 0.0)
+                                    pitch = tel.get("pitch", 0.0)
+                                    roll = tel.get("roll", 0.0)
+                                    telemetry_store.update_imu(0.0, 0.0, 0.0, 1.0, accel={"x": roll, "y": pitch, "z": yaw})
+                                    telemetry_store.update_euler_angles(roll, pitch, yaw)
+                                    
+                                    # Update encoders
+                                    enc = tel.get("encoder_distance", 0.0)
+                                    telemetry_store.update_encoders(enc, enc, enc, enc)
+                                    telemetry_store.update_encoder_distance(enc)
+                                    
+                                    # Refresh active status connection
+                                    telemetry_store.update_connection(True)
+                            except json.JSONDecodeError:
+                                pass
+                            except Exception as e:
+                                logger.error(f"Error parsing robot WS message: {e}")
+                except Exception as e:
+                    logger.warning(f"WebSocket client connection lost: {e}. Reconnecting in 3s...")
+                    telemetry_store.update_connection(False)
+                    publishers_handler.set_ws_client(None)
+                    await asyncio.sleep(3)
+
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(run())
+        except Exception as e:
+            logger.error(f"Error in remote WS client loop thread: {e}")
 
     def stop(self):
         self._running = False

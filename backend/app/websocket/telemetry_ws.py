@@ -47,6 +47,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     "accel": {"x": 0.0, "y": 0.0, "z": 0.0},
                     "gyro": {"x": 0.0, "y": 0.0, "z": 0.0}
                 }),
+                "roll": snapshot.get("roll", 0.0),
+                "pitch": snapshot.get("pitch", 0.0),
+                "yaw": snapshot.get("yaw", 0.0),
+                "encoder_distance": snapshot.get("encoder_distance", 0.0),
                 "encoders": snapshot.get("encoders", {"fl": 0.0, "fr": 0.0, "rl": 0.0, "rr": 0.0}),
                 "ai_detections": snapshot.get("ai_detections", []),
                 "horn": snapshot.get("horn", False),

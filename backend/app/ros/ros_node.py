@@ -11,7 +11,7 @@ try:
     from sensor_msgs.msg import BatteryState, LaserScan, Image
     from nav_msgs.msg import Odometry, OccupancyGrid
     from tf2_msgs.msg import TFMessage
-    from std_msgs.msg import String
+    from std_msgs.msg import String, Float32
     RCLPY_AVAILABLE = True
 except ImportError:
     RCLPY_AVAILABLE = False
@@ -31,7 +31,7 @@ class RobotBridgeNode(Node):
 
         # Subscriptions to topics
         self._sub_battery = self.create_subscription(
-            BatteryState, "/sensor/battery", subscribers_handler.handle_battery, 10
+            Float32, "/sensor/battery", subscribers_handler.handle_battery, 10
         )
         self._sub_scan = self.create_subscription(
             LaserScan, "/scan", subscribers_handler.handle_scan, 10
@@ -49,10 +49,13 @@ class RobotBridgeNode(Node):
             Image, "/camera/image_raw", camera_handler.handle_image_msg, 10
         )
         self._sub_esp_status = self.create_subscription(
-            String, "/esp/status", subscribers_handler.handle_esp_status, 10
+            String, "/esp32/status", subscribers_handler.handle_esp_status, 10
+        )
+        self._sub_esp_mode = self.create_subscription(
+            String, "/esp32/mode", subscribers_handler.handle_esp_mode, 10
         )
         self._sub_encoder = self.create_subscription(
-            String, "/wheel/encoder", subscribers_handler.handle_encoder, 10
+            Float32, "/esp32/encoder_distance", subscribers_handler.handle_encoder_distance, 10
         )
         self._sub_ai_detection = self.create_subscription(
             String, "/ai/detection", subscribers_handler.handle_ai_detection, 10

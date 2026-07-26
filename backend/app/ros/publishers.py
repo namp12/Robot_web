@@ -20,6 +20,7 @@ class TopicPublishersHandler:
         self.slam_ctrl_pub = None
         self.esp32_serial_tx_pub = None
         self.mode_cmd_pub = None
+        self._ws_client = None
 
         if RCLPY_AVAILABLE and self.node:
             self.cmd_vel_pub = self.node.create_publisher(Twist, "/cmd_vel", 10)
@@ -28,7 +29,46 @@ class TopicPublishersHandler:
             self.esp32_serial_tx_pub = self.node.create_publisher(String, "/robot/move", 10)
             self.mode_cmd_pub = self.node.create_publisher(String, "/robot/mode_cmd", 10)
 
+    def set_ws_client(self, ws):
+        """Set a remote WebSocket client connection to forward commands to."""
+        self._ws_client = ws
+        if ws:
+            logger.info("🔌 [Publishers] Remote WebSocket client registered for command forwarding.")
+        else:
+            logger.info("🔌 [Publishers] Remote WebSocket client cleared.")
+
     def publish_robot_move(self, text: str):
+        if self._ws_client:
+            import json
+            import asyncio
+            payload = {}
+            if text == "dung":
+                payload = {"type": "move", "direction": "dung", "speed": 0}
+            elif text.startswith("coi"):
+                payload = {"type": "beep"}
+            else:
+                parts = text.split()
+                if len(parts) > 0:
+                    direction = parts[0]
+                    try:
+                        speed = int(parts[1]) if len(parts) > 1 else 150
+                    except ValueError:
+                        speed = 150
+                    payload = {"type": "move", "direction": direction, "speed": speed}
+                else:
+                    payload = {"type": "text", "data": text}
+
+            msg_str = json.dumps(payload)
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(self._ws_client.send(msg_str))
+                else:
+                    loop.run_until_complete(self._ws_client.send(msg_str))
+            except Exception as e:
+                logger.error(f"Failed to send move command over WebSocket: {e}")
+            return
+
         if not RCLPY_AVAILABLE or not self.esp32_serial_tx_pub:
             logger.info(f"[Publishers Fallback] /robot/move: '{text}'")
             return
@@ -37,6 +77,23 @@ class TopicPublishersHandler:
         self.esp32_serial_tx_pub.publish(msg)
 
     def publish_mode_cmd(self, mode: str):
+        if self._ws_client:
+            import json
+            import asyncio
+            mode_map = {"MANUAL": "manual", "AUTO": "auto", "ROS": "ros2"}
+            mapped_mode = mode_map.get(mode.upper(), "manual")
+            payload = {"type": "mode", "mode": mapped_mode}
+            msg_str = json.dumps(payload)
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(self._ws_client.send(msg_str))
+                else:
+                    loop.run_until_complete(self._ws_client.send(msg_str))
+            except Exception as e:
+                logger.error(f"Failed to send mode command over WebSocket: {e}")
+            return
+
         if not RCLPY_AVAILABLE or not self.mode_cmd_pub:
             logger.info(f"[Publishers Fallback] /robot/mode_cmd: '{mode}'")
             return
@@ -45,6 +102,26 @@ class TopicPublishersHandler:
         self.mode_cmd_pub.publish(msg)
 
     def publish_cmd_vel(self, linear_x: float, linear_y: float, angular_z: float):
+        if self._ws_client:
+            import json
+            import asyncio
+            payload = {
+                "type": "cmd_vel",
+                "linear_x": float(linear_x),
+                "linear_y": float(linear_y),
+                "angular_z": float(angular_z)
+            }
+            msg_str = json.dumps(payload)
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(self._ws_client.send(msg_str))
+                else:
+                    loop.run_until_complete(self._ws_client.send(msg_str))
+            except Exception as e:
+                logger.error(f"Failed to send cmd_vel command over WebSocket: {e}")
+            return
+
         if not RCLPY_AVAILABLE or not self.cmd_vel_pub:
             logger.info(f"[Publishers Fallback] CmdVel: linear_x={linear_x}, linear_y={linear_y}, angular_z={angular_z}")
             return
@@ -60,3 +137,4 @@ class TopicPublishersHandler:
 
 
 publishers_handler = TopicPublishersHandler()
+

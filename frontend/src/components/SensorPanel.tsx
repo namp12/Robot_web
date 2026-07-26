@@ -4,7 +4,7 @@ import useTelemetry from '../hooks/useTelemetry';
 import { Shield, Route, ArrowDown, ArrowUp } from 'lucide-react';
 
 export const SensorPanel: React.FC = () => {
-  const { telemetry } = useTelemetry();
+  const { telemetry, isConnected } = useTelemetry();
 
   // IMU Data
   const imuRaw = telemetry?.imu_raw || {
@@ -108,11 +108,22 @@ export const SensorPanel: React.FC = () => {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                </span>
-                <span className="text-[10px] text-emerald-400 font-semibold font-mono animate-pulse">Active</span>
+                {isConnected ? (
+                  <>
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-semibold font-mono animate-pulse">Active</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                    <span className="text-[10px] text-rose-500 font-semibold font-mono animate-pulse">Offline</span>
+                  </>
+                )}
               </div>
             </div>
           </div>

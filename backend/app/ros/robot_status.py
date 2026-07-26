@@ -43,6 +43,10 @@ class RobotTelemetryStore:
             "accel": {"x": 0.0, "y": 0.0, "z": 0.0},
             "gyro": {"x": 0.0, "y": 0.0, "z": 0.0}
         }
+        self._roll: float = 0.0
+        self._pitch: float = 0.0
+        self._yaw: float = 0.0
+        self._encoder_distance: float = 0.0
         self._encoders: Dict[str, float] = {"fl": 0.0, "fr": 0.0, "rl": 0.0, "rr": 0.0}
         self._ai_detections: List[Dict[str, Any]] = []
         self._horn: bool = False
@@ -116,6 +120,18 @@ class RobotTelemetryStore:
                 self._imu_raw["accel"] = accel
             if gyro:
                 self._imu_raw["gyro"] = gyro
+            self._last_update = time.time()
+
+    def update_euler_angles(self, roll: float, pitch: float, yaw: float):
+        with self._lock:
+            self._roll = roll
+            self._pitch = pitch
+            self._yaw = yaw
+            self._last_update = time.time()
+
+    def update_encoder_distance(self, distance: float):
+        with self._lock:
+            self._encoder_distance = distance
             self._last_update = time.time()
 
     def update_encoders(self, fl: float, fr: float, rl: float, rr: float):
@@ -200,6 +216,10 @@ class RobotTelemetryStore:
                 "rear_distance": self._rear_distance,
                 "imu": dict(self._imu),
                 "imu_raw": dict(self._imu_raw),
+                "roll": self._roll,
+                "pitch": self._pitch,
+                "yaw": self._yaw,
+                "encoder_distance": self._encoder_distance,
                 "encoders": dict(self._encoders),
                 "ai_detections": list(self._ai_detections),
                 "horn": self._horn,
