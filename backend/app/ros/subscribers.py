@@ -229,9 +229,14 @@ class TopicSubscribersHandler:
     def handle_ai_detection(msg):
         try:
             import json
+            from app.database.nosql import nosql_db
             data_str = str(getattr(msg, "data", "[]"))
             detections = json.loads(data_str)
             telemetry_store.update_ai_detections(detections)
+            
+            # Save detections persistently to TinyDB NoSQL database
+            if detections:
+                nosql_db.insert_detection(mission_id=1, detections=detections)
         except Exception as e:
             logger.error(f"Error handling /ai/detection: {e}")
 

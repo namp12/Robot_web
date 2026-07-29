@@ -6,6 +6,8 @@
 -- =====================================================
 
 PRAGMA foreign_keys = ON;
+PRAGMA journal_mode = WAL;
+PRAGMA synchronous = NORMAL;
 
 -- =====================================================
 -- ROBOTS
@@ -145,21 +147,6 @@ CREATE TABLE missions(
 );
 
 -- =====================================================
--- MISSION LOG
--- =====================================================
-
-CREATE TABLE mission_logs(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mission_id INTEGER,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    event TEXT,
-    detail TEXT,
-
-    FOREIGN KEY(mission_id)
-    REFERENCES missions(id) ON DELETE CASCADE
-);
-
--- =====================================================
 -- BLACKBOX
 -- =====================================================
 
@@ -187,107 +174,6 @@ CREATE TABLE blackbox(
 );
 
 -- =====================================================
--- BATTERY
--- =====================================================
-
-CREATE TABLE battery_logs(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mission_id INTEGER,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    voltage REAL,
-    current REAL,
-    percentage INTEGER,
-
-    FOREIGN KEY(mission_id)
-    REFERENCES missions(id) ON DELETE CASCADE
-);
-
--- =====================================================
--- SENSOR
--- =====================================================
-
-CREATE TABLE sensor_logs(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mission_id INTEGER,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    imu_acc_x REAL,
-    imu_acc_y REAL,
-    imu_acc_z REAL,
-
-    imu_gyro_x REAL,
-    imu_gyro_y REAL,
-    imu_gyro_z REAL,
-
-    temperature REAL,
-    pressure REAL,
-
-    FOREIGN KEY(mission_id)
-    REFERENCES missions(id) ON DELETE CASCADE
-);
-
--- =====================================================
--- MOTOR
--- =====================================================
-
-CREATE TABLE motor_logs(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mission_id INTEGER,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    left_rpm REAL,
-    right_rpm REAL,
-
-    left_pwm INTEGER,
-    right_pwm INTEGER,
-
-    FOREIGN KEY(mission_id)
-    REFERENCES missions(id) ON DELETE CASCADE
-);
-
--- =====================================================
--- NAVIGATION
--- =====================================================
-
-CREATE TABLE navigation_logs(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mission_id INTEGER,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    goal_x REAL,
-    goal_y REAL,
-    goal_yaw REAL DEFAULT 0.0,
-
-    current_x REAL,
-    current_y REAL,
-
-    status TEXT,
-
-    FOREIGN KEY(mission_id)
-    REFERENCES missions(id) ON DELETE CASCADE
-);
-
--- =====================================================
--- AI
--- =====================================================
-
-CREATE TABLE ai_logs(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mission_id INTEGER,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    model TEXT,
-    question TEXT,
-    answer TEXT,
-
-    latency REAL,
-
-    FOREIGN KEY(mission_id)
-    REFERENCES missions(id) ON DELETE CASCADE
-);
-
--- =====================================================
 -- OBJECT DETECTION
 -- =====================================================
 
@@ -306,38 +192,6 @@ CREATE TABLE detection_logs(
     bbox_h REAL,
 
     image_path TEXT,
-
-    FOREIGN KEY(mission_id)
-    REFERENCES missions(id) ON DELETE CASCADE
-);
-
--- =====================================================
--- IMAGES
--- =====================================================
-
-CREATE TABLE images(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mission_id INTEGER,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    image_path TEXT,
-    description TEXT,
-
-    FOREIGN KEY(mission_id)
-    REFERENCES missions(id) ON DELETE CASCADE
-);
-
--- =====================================================
--- VIDEOS
--- =====================================================
-
-CREATE TABLE videos(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mission_id INTEGER,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    video_path TEXT,
-    duration REAL,
 
     FOREIGN KEY(mission_id)
     REFERENCES missions(id) ON DELETE CASCADE
@@ -400,22 +254,17 @@ CREATE TABLE system_logs(
 
 -- Timestamp Indexes
 CREATE INDEX idx_blackbox_time ON blackbox(timestamp);
-CREATE INDEX idx_battery_time ON battery_logs(timestamp);
-CREATE INDEX idx_sensor_time ON sensor_logs(timestamp);
-CREATE INDEX idx_motor_time ON motor_logs(timestamp);
-CREATE INDEX idx_navigation_time ON navigation_logs(timestamp);
 CREATE INDEX idx_detection_time ON detection_logs(timestamp);
-CREATE INDEX idx_ai_time ON ai_logs(timestamp);
 CREATE INDEX idx_error_time ON error_logs(timestamp);
 CREATE INDEX idx_system_time ON system_logs(timestamp);
 
 -- Foreign Key / Mission Lookup Indexes
 CREATE INDEX idx_blackbox_mission ON blackbox(mission_id);
-CREATE INDEX idx_navigation_mission ON navigation_logs(mission_id);
+-- Composite index for fast trajectory querying per mission
+CREATE INDEX idx_blackbox_mission_time ON blackbox(mission_id, timestamp);
+
 CREATE INDEX idx_detection_mission ON detection_logs(mission_id);
 CREATE INDEX idx_error_mission ON error_logs(mission_id);
-CREATE INDEX idx_battery_mission ON battery_logs(mission_id);
-CREATE INDEX idx_sensor_mission ON sensor_logs(mission_id);
 CREATE INDEX idx_waypoints_map ON waypoints(map_id);
 
 -- =====================================================

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api import robot, missions, maps, blackbox, system, ai, camera, navigation, auth
+from app.api import robot, missions, maps, blackbox, system, ai, camera, navigation, auth, nosql_api
 
 api_router = APIRouter()
 
@@ -12,3 +12,4 @@ api_router.include_router(system.router)
 api_router.include_router(ai.router)
 api_router.include_router(camera.router)
 api_router.include_router(navigation.router)
+api_router.include_router(nosql_api.router)
