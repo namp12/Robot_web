@@ -89,6 +89,9 @@ class RobotBridgeNode(Node):
         publishers_handler.mode_cmd_pub = self.create_publisher(String, "/robot/mode_cmd", 10)
         logger.info("📡 Initialized publishers for: /cmd_vel, /camera/control, /slam/control, /robot/move, /robot/mode_cmd")
 
+        # Add undervoltage monitoring timer (every 2.0s)
+        self._undervoltage_timer = self.create_timer(2.0, self._check_pi_undervoltage)
+
     def _resolve_distance_sensors(self):
         if self._distances_resolved:
             return
@@ -142,3 +145,14 @@ class RobotBridgeNode(Node):
 
             # Destroy the resolver timer
             self.destroy_timer(self._resolve_timer)
+
+    def _check_pi_undervoltage(self):
+        import subprocess
+        try:
+            res = subprocess.check_output(["vcgencmd", "get_throttled"]).decode().strip()
+            val = int(res.split("=")[1], 16)
+            # Bit 0 represents Under-voltage detected (current)
+            undervoltage = bool(val & 0x1)
+            telemetry_store.update_pi_undervoltage(undervoltage)
+        except Exception:
+            pass

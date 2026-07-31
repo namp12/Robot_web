@@ -61,7 +61,21 @@ class BlackBoxService:
     @staticmethod
     async def record_telemetry_snapshot(db: AsyncSession, mission_id: int = 1, event: str = "LOG"):
         """Save a real-time ROS2 telemetry snapshot into SQLite blackbox table."""
+        import json
         snapshot = telemetry_store.get_snapshot()
+        
+        # Package complex sensor data into JSON
+        sensor_data_dict = {
+            "imu": snapshot.get("imu", {}),
+            "imu_raw": snapshot.get("imu_raw", {}),
+            "roll": snapshot.get("roll", 0.0),
+            "pitch": snapshot.get("pitch", 0.0),
+            "front_distance": snapshot.get("front_distance", 0.0),
+            "rear_distance": snapshot.get("rear_distance", 0.0),
+            "encoder_distance": snapshot.get("encoder_distance", 0.0),
+            "encoders": snapshot.get("encoders", {})
+        }
+        
         entry = BlackBox(
             mission_id=mission_id,
             pos_x=snapshot["pose"]["x"],
@@ -73,7 +87,8 @@ class BlackBoxService:
             cpu=snapshot["cpu"],
             ram=snapshot["ram"],
             wifi_signal=snapshot["wifi_signal"],
-            event=event
+            event=event,
+            sensor_data=json.dumps(sensor_data_dict)
         )
         db.add(entry)
         await db.commit()

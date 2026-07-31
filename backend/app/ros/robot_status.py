@@ -34,6 +34,7 @@ class RobotTelemetryStore:
         self._camera_status: bool = True
         self._lidar_status: bool = True
         self._esp32_status: bool = True
+        self._pi_undervoltage: bool = False
 
         # Sensors & Actuators
         self._front_distance: float = 0.0
@@ -103,6 +104,11 @@ class RobotTelemetryStore:
             self._camera_status = camera
             self._lidar_status = lidar
             self._esp32_status = esp32
+            self._last_update = time.time()
+
+    def update_pi_undervoltage(self, state: bool):
+        with self._lock:
+            self._pi_undervoltage = state
             self._last_update = time.time()
 
     def update_sensor_distance(self, front: float = None, rear: float = None):
@@ -212,6 +218,7 @@ class RobotTelemetryStore:
                 "camera_status": self._camera_status,
                 "lidar_status": self._lidar_status,
                 "esp32_status": self._esp32_status,
+                "pi_undervoltage": self._pi_undervoltage,
                 "front_distance": self._front_distance,
                 "rear_distance": self._rear_distance,
                 "imu": dict(self._imu),

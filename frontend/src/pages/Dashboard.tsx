@@ -16,7 +16,8 @@ import {
   Layers,
   ShieldCheck,
   Zap,
-  Volume2
+  Volume2,
+  AlertTriangle
 } from 'lucide-react';
 import useTelemetry from '../hooks/useTelemetry';
 import robotService from '../services/robot.service';
@@ -39,6 +40,8 @@ export const Dashboard: React.FC = () => {
   const robotStatus = telemetry?.robot_status ?? 'ONLINE';
   const robotMode = telemetry?.mode ?? 'MANUAL';
   const wifiSig = telemetry?.wifi_signal ?? 92;
+  const voltageVal = telemetry?.voltage ?? 24.2;
+  const piUndervoltage = telemetry?.pi_undervoltage ?? false;
 
   const toggleMode = async () => {
     const nextMode = robotMode === 'MANUAL' ? 'AUTO' : robotMode === 'AUTO' ? 'ROS' : 'MANUAL';
@@ -51,6 +54,35 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Critical Undervoltage Alerts */}
+      {piUndervoltage && (
+        <div className="flex items-center gap-3 bg-red-950/80 border-2 border-red-500 text-red-200 p-5 rounded-2xl shadow-soft animate-pulse">
+          <AlertTriangle className="w-6 h-6 text-red-500 shrink-0" />
+          <div className="flex-1">
+            <h4 className="font-bold font-mono text-sm tracking-tight text-white flex items-center gap-2">
+              <span>🚨 CRITICAL POWER SYSTEM ALERT: Raspberry Pi 4 Undervoltage Detected!</span>
+            </h4>
+            <p className="text-xs text-red-300 font-mono mt-0.5">
+              Power supply input has dropped below 4.63V. The CPU will be throttled. Please check USB-C cable or power supply immediately to prevent SD card corruption.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {voltageVal < 21.5 && (
+        <div className="flex items-center gap-3 bg-amber-950/80 border border-amber-500 text-amber-200 p-5 rounded-2xl shadow-soft">
+          <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0" />
+          <div className="flex-1">
+            <h4 className="font-bold font-mono text-sm tracking-tight text-white">
+              ⚠️ BATTERY VOLTAGE LOW WARNING
+            </h4>
+            <p className="text-xs text-amber-300 font-mono mt-0.5">
+              Main Battery Voltage is low at {voltageVal.toFixed(1)}V (critical limit: 21.0V). Return the robot to the charging station soon.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Top Telemetry Control Banner */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 glass-card p-6 rounded-2xl shadow-soft">
         <div className="space-y-1">

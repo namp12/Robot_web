@@ -121,6 +121,7 @@ class BlackBoxResponse(BaseModel):
     ram: Optional[float] = 52.5
     wifi_signal: Optional[int] = 92
     event: Optional[str] = "LOG"
+    sensor_data: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

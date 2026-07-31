@@ -79,10 +79,17 @@ class ROS2Manager:
             # Refresh connection timestamp to stay ONLINE
             telemetry_store.update_connection(True)
             
-            # Fetch snapshot to modify fields
+            # Get current battery to decrease it
             snap = telemetry_store.get_snapshot()
             current_batt = snap.get("battery", 88.0)
-            next_batt = max(5.0, current_batt - 0.01) if current_batt > 5.0 else 99.0
+            next_batt = max(5.0, current_batt - 0.1) if current_batt > 5.0 else 99.0
+
+            # Calculate dynamic voltage based on battery level (24V system)
+            voltage = 19.5 + (next_batt / 100.0) * 5.7
+            
+            # Simulate Pi undervoltage if voltage is critical (<21.0V or battery < 15%)
+            pi_under = (next_batt < 15.0) or (voltage < 21.0)
+            telemetry_store.update_pi_undervoltage(pi_under)
 
             # Generate random numbers for telemetry
             cpu = random.uniform(25.0, 45.0)
@@ -90,7 +97,7 @@ class ROS2Manager:
             temp = random.uniform(45.0, 50.0)
             wifi = random.randint(85, 95)
 
-            telemetry_store.update_battery(next_batt, 24.2, 3.5)
+            telemetry_store.update_battery(next_batt, voltage, 3.5)
             telemetry_store.update_system(cpu, ram, temp, wifi)
             
             # Generate mock encoder values (in ticks/second)
@@ -205,7 +212,13 @@ class ROS2Manager:
                                     
                                     # Update battery
                                     battery = tel.get("battery", 88.0)
-                                    telemetry_store.update_battery(battery)
+                                    voltage = tel.get("voltage") or (19.5 + (battery / 100.0) * 5.7)
+                                    current = tel.get("current", 3.5)
+                                    telemetry_store.update_battery(battery, voltage, current)
+                                    
+                                    # Update Pi Undervoltage
+                                    pi_under = tel.get("pi_undervoltage", False)
+                                    telemetry_store.update_pi_undervoltage(pi_under)
                                     
                                     # Update mode & status
                                     if "mode" in tel:

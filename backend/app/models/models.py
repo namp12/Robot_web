@@ -146,6 +146,7 @@ class BlackBox(Base):
     wifi_signal: Mapped[Optional[int]] = mapped_column(Integer)
 
     event: Mapped[Optional[str]] = mapped_column(Text)
+    sensor_data: Mapped[Optional[str]] = mapped_column(Text)
 
     mission = relationship("Mission", back_populates="blackboxes")
 

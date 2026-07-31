@@ -168,6 +168,7 @@ CREATE TABLE blackbox(
     wifi_signal INTEGER,
 
     event TEXT,
+    sensor_data TEXT,
 
     FOREIGN KEY(mission_id)
     REFERENCES missions(id) ON DELETE CASCADE
