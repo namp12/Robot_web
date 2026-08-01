@@ -62,3 +62,48 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.warning(f"⚠️ WebSocket Client Disconnected: {websocket.client}")
     except Exception as e:
         logger.error(f"Error in WebSocket stream: {e}")
+
+
+class BlackBoxConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        logger.info(f"🔌 BlackBox WebSocket Client Connected: {websocket.client}")
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+            logger.info(f"⚠️ BlackBox WebSocket Client Disconnected: {websocket.client}")
+
+    async def broadcast_log(self, log_data: dict):
+        if not self.active_connections:
+            return
+        
+        # Broadcast the JSON payload to all connected clients
+        tasks = []
+        for connection in self.active_connections:
+            tasks.append(connection.send_json(log_data))
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+
+blackbox_manager = BlackBoxConnectionManager()
+
+
+@router.websocket("/ws/blackbox")
+async def blackbox_websocket_endpoint(websocket: WebSocket):
+    """Real-time WebSocket endpoint broadcasting new BlackBox entries instantly."""
+    await blackbox_manager.connect(websocket)
+    try:
+        while True:
+            # Keep the socket open, read client heartbeats or dummy messages
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        blackbox_manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"Error in BlackBox WebSocket stream: {e}")
+        blackbox_manager.disconnect(websocket)
+

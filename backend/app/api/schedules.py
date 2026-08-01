@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
-from app.database.database import get_db
+from app.database.session import get_db
 from app.models.models import PatrolSchedule
 from app.schemas.schemas import PatrolScheduleCreate, PatrolScheduleResponse
 

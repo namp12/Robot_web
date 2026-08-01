@@ -93,7 +93,17 @@ class BlackBoxService:
         db.add(entry)
         await db.commit()
         await db.refresh(entry)
-        return BlackBoxResponse.model_validate(entry)
+        
+        response_model = BlackBoxResponse.model_validate(entry)
+        try:
+            from app.websocket.telemetry_ws import blackbox_manager
+            payload = response_model.model_dump(mode='json')
+            await blackbox_manager.broadcast_log(payload)
+        except Exception as e:
+            import logging
+            logging.getLogger("BlackBoxService").error(f"Failed to broadcast real-time blackbox log: {e}")
+
+        return response_model
 
 
 blackbox_service = BlackBoxService()
