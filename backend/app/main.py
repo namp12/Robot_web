@@ -11,7 +11,7 @@ import app.models.models  # Register all ORM models with Base.metadata
 import asyncio
 import logging
 from sqlalchemy import select
-from app.models.models import Robot, Mission
+from app.models.models import Robot, Mission, SystemLog
 from app.services.blackbox_service import blackbox_service
 
 logger = logging.getLogger("ApplicationMain")
@@ -69,6 +69,54 @@ async def auto_blackbox_logger():
             logger.error(f"Error in auto_blackbox_logger loop: {e}")
 
 
+async def auto_system_logger():
+    """Background loop logging system resources to SQLite every 10 seconds."""
+    logger.info("⏳ Starting background Auto-System logger (10s interval)...")
+    try:
+        import psutil
+        HAS_PSUTIL = True
+    except ImportError:
+        HAS_PSUTIL = False
+
+    while True:
+        try:
+            await asyncio.sleep(10.0)
+            if HAS_PSUTIL:
+                cpu = psutil.cpu_percent()
+                ram = psutil.virtual_memory().percent
+                disk = psutil.disk_usage('/').percent
+                cpu_temp = None
+                try:
+                    temps = psutil.sensors_temperatures()
+                    if 'cpu_thermal' in temps:
+                        cpu_temp = temps['cpu_thermal'][0].current
+                    elif 'coretemp' in temps:
+                        cpu_temp = temps['coretemp'][0].current
+                except Exception:
+                    pass
+            else:
+                # Fallback to telemetry store snapshot or random mockup
+                from app.ros.robot_status import telemetry_store
+                snap = telemetry_store.get_snapshot()
+                cpu = snap.get("cpu", 34.5)
+                ram = snap.get("ram", 52.5)
+                disk = 23.1
+                cpu_temp = snap.get("temperature", 48.5)
+
+            async with AsyncSessionLocal() as db:
+                log_entry = SystemLog(
+                    cpu=cpu,
+                    ram=ram,
+                    disk=disk,
+                    cpu_temperature=cpu_temp,
+                    gpu_temperature=None
+                )
+                db.add(log_entry)
+                await db.commit()
+        except Exception as e:
+            logger.error(f"Error in auto_system_logger loop: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """FastAPI Lifespan Manager for Database Table Auto-Creation & ROS2 Node Lifecycle."""
@@ -82,14 +130,16 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize ROS2 Manager & Thread Spin
     ros_manager.start()
 
-    # Start the background logger task
-    logger_task = asyncio.create_task(auto_blackbox_logger())
+    # Start background tasks
+    blackbox_logger_task = asyncio.create_task(auto_blackbox_logger())
+    system_logger_task = asyncio.create_task(auto_system_logger())
 
     yield
 
-    # Shutdown: Cleanly stop ROS2 Manager and cancel logger task
+    # Shutdown: Cleanly stop ROS2 Manager and cancel tasks
     ros_manager.stop()
-    logger_task.cancel()
+    blackbox_logger_task.cancel()
+    system_logger_task.cancel()
 
 
 app = FastAPI(

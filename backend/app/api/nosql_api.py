@@ -14,6 +14,11 @@ async def get_nosql_errors(mission_id: Optional[int] = Query(None, description="
     """Get system error/warning logs from TinyDB NoSQL database."""
     return nosql_db.get_errors(mission_id=mission_id)
 
+@router.get("/conversations", response_model=List[Dict[str, Any]])
+async def get_nosql_conversations(mission_id: Optional[int] = Query(None, description="Filter by mission ID")):
+    """Get AI dialog conversation logs from TinyDB NoSQL database."""
+    return nosql_db.get_conversations(mission_id=mission_id)
+
 @router.post("/detections/test")
 async def create_test_detection(mission_id: int = 1, object_name: str = "person", confidence: float = 0.92):
     """Insert a test AI detection entry into NoSQL database."""

@@ -41,5 +41,27 @@ class MissionService:
         await db.refresh(db_mission)
         return MissionResponse.model_validate(db_mission)
 
+    @staticmethod
+    async def update_mission(db: AsyncSession, mission_id: int, data: MissionUpdate) -> Optional[Mission]:
+        result = await db.execute(select(Mission).where(Mission.id == mission_id))
+        db_mission = result.scalar_one_or_none()
+        if not db_mission:
+            return None
+        for key, value in data.model_dump(exclude_unset=True).items():
+            setattr(db_mission, key, value)
+        await db.commit()
+        await db.refresh(db_mission)
+        return db_mission
+
+    @staticmethod
+    async def delete_mission(db: AsyncSession, mission_id: int) -> bool:
+        result = await db.execute(select(Mission).where(Mission.id == mission_id))
+        db_mission = result.scalar_one_or_none()
+        if not db_mission:
+            return False
+        await db.delete(db_mission)
+        await db.commit()
+        return True
+
 
 mission_service = MissionService()

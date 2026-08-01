@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.models import MapModel
-from app.schemas.schemas import MapCreate, MapResponse
+from app.schemas.schemas import MapCreate, MapResponse, MapUpdate
 
 
 class MapService:
@@ -33,6 +33,28 @@ class MapService:
         return MapResponse.model_validate(db_map)
 
     @staticmethod
+    async def update_map(db: AsyncSession, map_id: int, data: MapUpdate) -> Optional[MapModel]:
+        result = await db.execute(select(MapModel).where(MapModel.id == map_id))
+        db_map = result.scalar_one_or_none()
+        if not db_map:
+            return None
+        for key, value in data.model_dump(exclude_unset=True).items():
+            setattr(db_map, key, value)
+        await db.commit()
+        await db.refresh(db_map)
+        return db_map
+
+    @staticmethod
+    async def delete_map(db: AsyncSession, map_id: int) -> bool:
+        result = await db.execute(select(MapModel).where(MapModel.id == map_id))
+        db_map = result.scalar_one_or_none()
+        if not db_map:
+            return False
+        await db.delete(db_map)
+        await db.commit()
+        return True
+
+    @staticmethod
     async def startSLAM() -> dict:
         import subprocess
         import logging
@@ -55,7 +77,7 @@ class MapService:
         return {"status": "SUCCESS", "message": "SLAM stopped."}
 
     @staticmethod
-    async def saveSLAMMap(map_name: str, save_path: str = None) -> dict:
+    async def saveSLAMMap(db: AsyncSession, map_name: str, save_path: str = None) -> dict:
         import os
         import subprocess
         import logging
@@ -75,6 +97,24 @@ class MapService:
         if parent_dir:
             os.makedirs(parent_dir, exist_ok=True)
 
+        async def _persist_map_to_db():
+            try:
+                # We check if map_name already exists to avoid duplicate entries
+                result = await db.execute(select(MapModel).where(MapModel.map_name == map_name))
+                existing_map = result.scalar_one_or_none()
+                if not existing_map:
+                    new_map = MapModel(
+                        map_name=map_name,
+                        yaml_path=f"/maps/{map_name}.yaml",
+                        image_path=f"/maps/{map_name}.pgm",
+                        description="Automatically saved from SLAM session",
+                        resolution=0.05
+                    )
+                    db.add(new_map)
+                    await db.commit()
+            except Exception as db_err:
+                logger.error(f"Error persisting map to DB: {db_err}")
+
         # Trigger standard ROS2 map_saver_cli
         cmd = ["ros2", "run", "nav2_map_server", "map_saver_cli", "-f", save_path]
         logger.info(f"Executing: {' '.join(cmd)}")
@@ -84,6 +124,7 @@ class MapService:
             stdout, stderr = process.communicate(timeout=5.0)
             if process.returncode == 0:
                 logger.info(f"Successfully saved ROS2 map to {save_path}")
+                await _persist_map_to_db()
                 return {
                     "status": "SUCCESS", 
                     "message": f"Map saved successfully on Pi: {save_path}",
@@ -97,6 +138,7 @@ class MapService:
                     f.write(f"image: {map_name}.pgm\nresolution: 0.05\norigin: [-10.0, -10.0, 0.0]\nnegate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.196\n")
                 with open(f"{save_path}.pgm", "w") as f:
                     f.write("P5\n# Mock Map\n100 100\n255\n")
+                await _persist_map_to_db()
                 return {
                     "status": "SUCCESS",
                     "message": f"Map saved (development simulation fallback). File: {save_path}",
@@ -109,6 +151,7 @@ class MapService:
                     f.write(f"image: {map_name}.pgm\nresolution: 0.05\norigin: [-10.0, -10.0, 0.0]\nnegate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.196\n")
                 with open(f"{save_path}.pgm", "w") as f:
                     f.write("P5\n# Mock Map\n100 100\n255\n")
+                await _persist_map_to_db()
                 return {
                     "status": "SUCCESS",
                     "message": f"Fallback YAML map file generated successfully at {save_path}",

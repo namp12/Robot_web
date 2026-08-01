@@ -20,11 +20,19 @@ async def create_map(data: MapCreate, db: AsyncSession = Depends(get_db)):
 
 @router.put("/maps/{id}", response_model=MapResponse)
 async def update_map(id: int, data: MapUpdate, db: AsyncSession = Depends(get_db)):
-    return MapResponse(id=id, map_name=data.map_name or f"Map_{id}")
+    db_map = await map_service.update_map(db, id, data)
+    if not db_map:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Map not found")
+    return db_map
 
 
 @router.delete("/maps/{id}")
-async def delete_map(id: int):
+async def delete_map(id: int, db: AsyncSession = Depends(get_db)):
+    success = await map_service.delete_map(db, id)
+    if not success:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Map not found")
     return {"status": "MAP_DELETED", "id": id}
 
 
@@ -39,8 +47,9 @@ async def stop_slam():
 
 
 @router.post("/slam/save")
-async def save_slam(data: dict):
+async def save_slam(data: dict, db: AsyncSession = Depends(get_db)):
     return await map_service.saveSLAMMap(
+        db,
         data.get("map_name", "new_map"),
         save_path=data.get("save_path")
     )

@@ -43,6 +43,17 @@ class NoSQLDatabase:
         })
         return str(doc_id)
 
+    def insert_conversation(self, mission_id: int, prompt: str, reply: str) -> str:
+        """Insert AI dialogue conversation log."""
+        doc_id = self.db.insert({
+            "type": "conversation",
+            "mission_id": mission_id,
+            "timestamp": datetime.now().isoformat(),
+            "prompt": prompt,
+            "reply": reply
+        })
+        return str(doc_id)
+
     def get_detections(self, mission_id: int = None) -> List[Dict[str, Any]]:
         """Retrieve AI detections, optionally filtered by mission_id."""
         Doc = Query()
@@ -56,6 +67,13 @@ class NoSQLDatabase:
         if mission_id is not None:
             return self.db.search((Doc.type == "error") & (Doc.mission_id == mission_id))
         return self.db.search(Doc.type == "error")
+
+    def get_conversations(self, mission_id: int = None) -> List[Dict[str, Any]]:
+        """Retrieve conversation logs, optionally filtered by mission_id."""
+        Doc = Query()
+        if mission_id is not None:
+            return self.db.search((Doc.type == "conversation") & (Doc.mission_id == mission_id))
+        return self.db.search(Doc.type == "conversation")
 
     def clear_all(self):
         """Clear all records in NoSQL database."""

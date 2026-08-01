@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends
 from app.ros.robot_status import telemetry_store
 from app.ros.publishers import publishers_handler
 from app.schemas.schemas import ControlCommandRequest, ModeSetRequest, HornSetRequest
-from app.utils.auth import get_current_user, TokenData
 
 router = APIRouter(prefix="/robot", tags=["Robot Telemetry & Control"])
 
@@ -65,8 +64,7 @@ async def get_robot_tf():
 
 @router.post("/move")
 async def send_control_command(
-    cmd: ControlCommandRequest,
-    current_user: TokenData = Depends(get_current_user)
+    cmd: ControlCommandRequest
 ):
     """POST /api/robot/move - Publish movement command to /cmd_vel and /robot/move."""
     # 1. Enforce Mode Manager Restrictions
@@ -168,7 +166,7 @@ async def send_control_command(
 
 
 @router.post("/emergency-stop")
-async def emergency_stop(current_user: TokenData = Depends(get_current_user)):
+async def emergency_stop():
     """POST /api/v1/robot/emergency-stop - Trigger E-STOP."""
     telemetry_store.set_emergency_stop()
     publishers_handler.emergency_stop()
@@ -179,8 +177,7 @@ async def emergency_stop(current_user: TokenData = Depends(get_current_user)):
 
 @router.post("/mode")
 async def set_robot_mode(
-    data: ModeSetRequest,
-    current_user: TokenData = Depends(get_current_user)
+    data: ModeSetRequest
 ):
     """POST /api/robot/mode - Set operation mode (MANUAL/AUTO/ROS)."""
     mode = data.mode.upper()
@@ -195,8 +192,7 @@ async def set_robot_mode(
 
 @router.post("/horn")
 async def set_robot_horn(
-    data: HornSetRequest,
-    current_user: TokenData = Depends(get_current_user)
+    data: HornSetRequest
 ):
     """POST /api/v1/robot/horn - Trigger horn (còi) on/off."""
     cmd_str = "coi 1" if data.state else "coi 0"

@@ -25,10 +25,15 @@ async def create_mission(data: MissionCreate, db: AsyncSession = Depends(get_db)
 
 @router.put("/{id}", response_model=MissionResponse)
 async def update_mission(id: int, data: MissionUpdate, db: AsyncSession = Depends(get_db)):
-    mission = await mission_service.get_mission(db, id)
+    mission = await mission_service.update_mission(db, id, data)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
     return mission
 
 
 @router.delete("/{id}")
-async def delete_mission(id: int):
+async def delete_mission(id: int, db: AsyncSession = Depends(get_db)):
+    success = await mission_service.delete_mission(db, id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Mission not found")
     return {"status": "DELETED", "id": id}
