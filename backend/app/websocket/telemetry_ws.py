@@ -59,9 +59,11 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_json(payload)
             await asyncio.sleep(1.0)  # Stream at 1Hz rate without blocking loop
     except WebSocketDisconnect:
-        logger.warning(f"⚠️ WebSocket Client Disconnected: {websocket.client}")
+        logger.info(f"WebSocket client disconnected: {websocket.client}")
+    except RuntimeError as e:
+        logger.info(f"WebSocket closed before send: {e}")
     except Exception as e:
-        logger.error(f"Error in WebSocket stream: {e}")
+        logger.exception("Error in WebSocket stream")
 
 
 class BlackBoxConnectionManager:
