@@ -50,12 +50,31 @@ class CameraNodeHandler:
 
     def generate_mjpeg_stream(self) -> Generator[bytes, None, None]:
         """Generator producing MJPEG stream for Web Browser."""
+        import urllib.request
+        from app.config.settings import settings
+
         while True:
-            # Check if frame is fresh (received in last 3 seconds)
+            # Check if frame is fresh (received in last 3 seconds from local ROS2 topic)
             if self._latest_frame_jpeg and (time.time() - self._last_msg_time < 3.0):
                 frame = self._latest_frame_jpeg
             else:
-                frame = self._create_bright_test_pattern()
+                # Proxy directly from Raspberry Pi Camera stream (port 8080)
+                try:
+                    req = urllib.request.urlopen(settings.CAMERA_STREAM_URL, timeout=1.0)
+                    stream_bytes = b''
+                    for _ in range(50):
+                        stream_bytes += req.read(1024)
+                        a = stream_bytes.find(b'\xff\xd8')
+                        b = stream_bytes.find(b'\xff\xd9')
+                        if a != -1 and b != -1 and b > a:
+                            frame = stream_bytes[a:b+2]
+                            self._latest_frame_jpeg = frame
+                            self._last_msg_time = time.time()
+                            break
+                    else:
+                        frame = self._create_bright_test_pattern()
+                except Exception:
+                    frame = self._create_bright_test_pattern()
 
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')

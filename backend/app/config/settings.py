@@ -23,12 +23,15 @@ class Settings(BaseSettings):
         "*"
     ]
 
-    # Server settings
+    # Server settings (FastAPI Web App on Raspberry Pi - Port 8000)
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    # Remote ROS2 WebSocket Bridge URL (used when rclpy is unavailable)
-    ROBOT_WS_URL: str = "ws://localhost:8080"
+    # Local ROS2 & Hardware Endpoints on Raspberry Pi (Zero Port Collisions)
+    PI_IP: str = os.getenv("PI_IP", "127.0.0.1")
+    ROBOT_WS_URL: str = os.getenv("ROBOT_WS_URL", f"ws://{PI_IP}:8090")
+    PI_COMMAND_URL: str = os.getenv("PI_COMMAND_URL", f"http://{PI_IP}:8001/command")
+    CAMERA_STREAM_URL: str = os.getenv("CAMERA_STREAM_URL", f"http://{PI_IP}:8080/video_feed")
 
     model_config = ConfigDict(
         env_file=".env",
