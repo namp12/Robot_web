@@ -6,4 +6,6 @@ export { mapService } from './map.service';
 export { systemService } from './system.service';
 export { aiService } from './ai.service';
 export { blackboxService } from './blackbox.service';
+export { missionService } from './mission.service';
+export { scheduleService } from './schedule.service';
 export { wsService } from './websocket.service';

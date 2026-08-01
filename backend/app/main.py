@@ -11,7 +11,7 @@ import app.models.models  # Register all ORM models with Base.metadata
 import asyncio
 import logging
 from sqlalchemy import select
-from app.models.models import Robot, Mission, SystemLog
+from app.models.models import Robot, Mission, SystemLog, PatrolSchedule
 from app.services.blackbox_service import blackbox_service
 
 logger = logging.getLogger("ApplicationMain")
@@ -117,6 +117,49 @@ async def auto_system_logger():
             logger.error(f"Error in auto_system_logger loop: {e}")
 
 
+async def auto_patrol_scheduler():
+    """Checks scheduled patrols every 30 seconds and starts active ones."""
+    logger.info("⏳ Starting background Auto-Patrol Scheduler (30s interval)...")
+    while True:
+        try:
+            await asyncio.sleep(30.0)
+            now = datetime.now()
+            current_time_str = now.strftime("%H:%M")
+            day_map = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
+            current_day = day_map[now.weekday()]
+            
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(select(PatrolSchedule).where(PatrolSchedule.active == 1))
+                schedules = result.scalars().all()
+                for s in schedules:
+                    try:
+                        sched_days = [d.strip() for d in s.days.split(",") if d.strip()]
+                        
+                        # Match scheduled time and current day of the week
+                        if current_time_str == s.start_time and current_day in sched_days:
+                            logger.info(f"⏰ Triggered active patrol schedule: '{s.name}' (ID: {s.id})")
+                            
+                            # Create a running mission record for history tracing
+                            db_mission = Mission(
+                                robot_id=1,
+                                mission_name=f"Patrol_{s.name}",
+                                status="RUNNING",
+                                note=f"Kích hoạt tự động từ Lịch trình ID: {s.id}"
+                            )
+                            db.add(db_mission)
+                            await db.commit()
+                            
+                            # Log/dispatch waypoints sequentially to Nav2
+                            import json
+                            wps = json.loads(s.waypoints)
+                            for wp in wps:
+                                logger.info(f"[Nav2 Auto Dispatch] Waypoint '{wp.get('name')}' -> (x={wp.get('x')}, y={wp.get('y')})")
+                    except Exception as e:
+                        logger.error(f"Error executing schedule {s.id}: {e}")
+        except Exception as e:
+            logger.error(f"Error in auto_patrol_scheduler: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """FastAPI Lifespan Manager for Database Table Auto-Creation & ROS2 Node Lifecycle."""
@@ -133,6 +176,7 @@ async def lifespan(app: FastAPI):
     # Start background tasks
     blackbox_logger_task = asyncio.create_task(auto_blackbox_logger())
     system_logger_task = asyncio.create_task(auto_system_logger())
+    patrol_scheduler_task = asyncio.create_task(auto_patrol_scheduler())
 
     yield
 
@@ -140,6 +184,7 @@ async def lifespan(app: FastAPI):
     ros_manager.stop()
     blackbox_logger_task.cancel()
     system_logger_task.cancel()
+    patrol_scheduler_task.cancel()
 
 
 app = FastAPI(

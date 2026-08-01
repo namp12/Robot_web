@@ -162,3 +162,16 @@ class SystemLog(Base):
     disk: Mapped[Optional[float]] = mapped_column(Float)
     cpu_temperature: Mapped[Optional[float]] = mapped_column(Float)
     gpu_temperature: Mapped[Optional[float]] = mapped_column(Float)
+
+
+class PatrolSchedule(Base):
+    __tablename__ = "patrol_schedules"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    start_time: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g., "23:00"
+    end_time: Mapped[str] = mapped_column(String(50), nullable=False)    # e.g., "05:00"
+    days: Mapped[str] = mapped_column(String(100), nullable=False)        # e.g., "Mon,Wed,Fri"
+    waypoints: Mapped[str] = mapped_column(Text, nullable=False)          # JSON array of points
+    active: Mapped[int] = mapped_column(Integer, default=1)               # 1=Active, 0=Inactive
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

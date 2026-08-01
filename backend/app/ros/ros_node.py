@@ -60,6 +60,9 @@ class RobotBridgeNode(Node):
         self._sub_ai_detection = self.create_subscription(
             String, "/ai/detection", subscribers_handler.handle_ai_detection, 10
         )
+        self._sub_ai_conversation = self.create_subscription(
+            String, "/ai/conversation", subscribers_handler.handle_ai_conversation, 10
+        )
 
         # Subscribe to IMU (MPU)
         try:

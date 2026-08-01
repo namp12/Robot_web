@@ -1,35 +1,104 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { BotMessageSquare, Send, User, Bot, Loader2 } from 'lucide-react';
+import { BotMessageSquare, Send, User, Bot, Loader2, RefreshCw } from 'lucide-react';
 import aiService from '../services/ai.service';
+
+interface Message {
+  id: string;
+  sender: 'user' | 'assistant';
+  text: string;
+  timestamp: string;
+}
 
 export const AIAssistant: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState([
-    { id: '1', sender: 'assistant', text: 'Hello Phuong Nam! I am your Robot Explorer AI Copilot. How can I assist you today?', timestamp: new Date().toLocaleTimeString() }
+  const [messages, setMessages] = useState<Message[]>([
+    { id: 'welcome', sender: 'assistant', text: 'Xin chào Phương Nam! Tôi là Trợ lý AI của Robot Kim Qui. Tôi sẵn sàng hỗ trợ điều khiển và chẩn đoán.', timestamp: new Date().toLocaleTimeString() }
   ]);
+  
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Load and sync conversation logs from TinyDB NoSQL database
+  const syncConversations = async () => {
+    try {
+      const dbLogs = await aiService.getConversations();
+      if (Array.isArray(dbLogs)) {
+        const parsedMsgs: Message[] = [
+          { id: 'welcome', sender: 'assistant', text: 'Xin chào Phương Nam! Tôi là Trợ lý AI của Robot Kim Qui. Tôi sẵn sàng hỗ trợ điều khiển và chẩn đoán.', timestamp: 'Hệ thống' }
+        ];
+
+        dbLogs.forEach((log: any, index: number) => {
+          const timeStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '';
+          
+          if (log.prompt) {
+            parsedMsgs.push({
+              id: `prompt-${index}`,
+              sender: 'user',
+              text: log.prompt,
+              timestamp: timeStr
+            });
+          }
+          if (log.reply) {
+            parsedMsgs.push({
+              id: `reply-${index}`,
+              sender: 'assistant',
+              text: log.reply,
+              timestamp: timeStr
+            });
+          }
+        });
+
+        // Update state only if we have new messages
+        setMessages((prev) => {
+          if (prev.length !== parsedMsgs.length) {
+            return parsedMsgs;
+          }
+          // Compare last message
+          if (prev.length > 0 && parsedMsgs.length > 0) {
+            if (prev[prev.length - 1].text !== parsedMsgs[parsedMsgs.length - 1].text) {
+              return parsedMsgs;
+            }
+          }
+          return prev;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to sync conversations', err);
+    }
+  };
+
+  // Scroll to bottom on new message
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Initial sync & start 2-second polling loop
+  useEffect(() => {
+    syncConversations();
+    const interval = setInterval(syncConversations, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
     const userPrompt = input;
-    const userMsg = { id: Date.now().toString(), sender: 'user', text: userPrompt, timestamp: new Date().toLocaleTimeString() };
-    setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setLoading(true);
 
     try {
+      // 1. Send query to Ollama chat endpoint
       const res = await aiService.chat(userPrompt);
-      const aiResponse = {
-        id: (Date.now() + 1).toString(),
-        sender: 'assistant',
-        text: (res as any).answer || `Response to "${userPrompt}": All robot telemetry operating normally.`,
-        timestamp: new Date().toLocaleTimeString()
-      };
-      setMessages((prev) => [...prev, aiResponse]);
+      const replyText = (res as any).answer || `Đã ghi nhận yêu cầu: "${userPrompt}"`;
+      
+      // 2. Persistently record conversation in TinyDB NoSQL
+      await aiService.saveConversation(userPrompt, replyText, 1);
+      
+      // 3. Immediately refresh chat state
+      await syncConversations();
     } catch (err) {
-      console.error('AI error', err);
+      console.error('AI chat error', err);
     } finally {
       setLoading(false);
     }
@@ -43,12 +112,15 @@ export const AIAssistant: React.FC = () => {
             <BotMessageSquare className="w-6 h-6 text-accent-cyan" />
             <span>AI Assistant Copilot</span>
           </h1>
-          <p className="text-xs text-slate-400">Natural language command dispatcher & diagnostic queries</p>
+          <p className="text-xs text-slate-400">Trò chuyện trực tiếp & thu thập hội thoại thời gian thực qua Mic của Robot</p>
         </div>
+        <Button variant="secondary" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={syncConversations}>
+          Đồng bộ thủ công
+        </Button>
       </div>
 
-      <Card className="flex flex-col h-[650px] p-0 overflow-hidden">
-        {/* Chat Messages */}
+      <Card className="flex flex-col h-[650px] p-0 overflow-hidden border border-slate-800 bg-slate-900/40 backdrop-blur-md">
+        {/* Chat Messages Area */}
         <div className="flex-1 p-6 overflow-y-auto space-y-4">
           {messages.map((msg) => (
             <div
@@ -59,32 +131,33 @@ export const AIAssistant: React.FC = () => {
                 {msg.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
               </div>
               <div className={`max-w-[70%] p-3.5 rounded-2xl text-sm ${msg.sender === 'user' ? 'bg-primary-600/20 text-slate-100 border border-primary-500/30' : 'bg-slate-800 text-slate-200 border border-slate-700'}`}>
-                <p>{msg.text}</p>
-                <span className="text-[10px] text-slate-400 mt-1 block text-right font-mono">{msg.timestamp}</span>
+                <p className="leading-relaxed">{msg.text}</p>
+                <span className="text-[9px] text-slate-500 mt-1.5 block text-right font-mono">{msg.timestamp}</span>
               </div>
             </div>
           ))}
+          <div ref={chatEndRef} />
           {loading && (
             <div className="flex items-center gap-2 text-xs font-mono text-slate-400 p-2">
               <Loader2 className="w-4 h-4 animate-spin text-accent-cyan" />
-              <span>AI is thinking...</span>
+              <span>Robot đang suy nghĩ...</span>
             </div>
           )}
         </div>
 
-        {/* Input Bar */}
+        {/* Chat Input Bar */}
         <div className="p-4 border-t border-dark-border bg-slate-900/60 flex items-center gap-3">
           <input
             type="text"
-            placeholder="Type your question or command (e.g. 'Check battery status')..."
+            placeholder="Nhập câu hỏi hoặc ra lệnh cho Kim Qui (ví dụ: 'Đi thẳng', 'Báo cáo pin')..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             disabled={loading}
-            className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-primary-500"
+            className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-primary-500 placeholder-slate-500"
           />
           <Button variant="primary" isLoading={loading} icon={<Send className="w-4 h-4" />} onClick={handleSend}>
-            Send
+            Gửi
           </Button>
         </div>
       </Card>

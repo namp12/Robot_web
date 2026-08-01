@@ -163,3 +163,26 @@ class NavigationStatusResponse(BaseModel):
     goal_y: Optional[float] = 1.8
     goal_yaw: Optional[float] = 0.0
     status: str = "NAVIGATING"
+
+
+# Patrol Schedule Schemas
+class PatrolScheduleCreate(BaseModel):
+    name: str
+    start_time: str
+    end_time: str
+    days: str
+    waypoints: str
+    active: int = 1
+
+
+class PatrolScheduleResponse(BaseModel):
+    id: int
+    name: str
+    start_time: str
+    end_time: str
+    days: str
+    waypoints: str
+    active: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

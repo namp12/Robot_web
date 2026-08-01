@@ -199,3 +199,16 @@ async def set_robot_horn(
     publishers_handler.publish_robot_move(cmd_str)
     telemetry_store.update_horn(data.state)
     return {"status": "SUCCESS", "horn": data.state, "esp32_command": cmd_str}
+
+
+from pydantic import BaseModel
+from app.services.tts_service import tts_service
+
+class SpeakRequest(BaseModel):
+    text: str
+
+@router.post("/speak")
+async def speak_text(data: SpeakRequest):
+    """POST /api/robot/speak - Speak natural text out loud via TTS."""
+    success = tts_service.speak(data.text)
+    return {"status": "SUCCESS" if success else "FAILED", "text": data.text}

@@ -240,5 +240,20 @@ class TopicSubscribersHandler:
         except Exception as e:
             logger.error(f"Error handling /ai/detection: {e}")
 
+    @staticmethod
+    def handle_ai_conversation(msg):
+        try:
+            import json
+            from app.database.nosql import nosql_db
+            data_str = str(getattr(msg, "data", "{}"))
+            data = json.loads(data_str)
+            prompt = data.get("prompt", "")
+            reply = data.get("reply", "")
+            mission_id = data.get("mission_id", 1)
+            if prompt and reply:
+                nosql_db.insert_conversation(mission_id, prompt, reply)
+        except Exception as e:
+            logger.error(f"Error handling /ai/conversation: {e}")
+
 
 subscribers_handler = TopicSubscribersHandler()
