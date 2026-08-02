@@ -7,10 +7,8 @@ export const cameraService = {
   },
 
   getStreamUrl: (): string => {
-    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    const hostname = window.location.hostname || 'localhost';
-    // Direct stream link to port 8000 bypassing Vite proxy buffering
-    return `${protocol}//${hostname}:8000/api/v1/camera/stream`;
+    // Direct link to PC YOLO AI Stream (Port 5050) with green bounding boxes & FPS overlay
+    return 'http://localhost:5050/video_feed';
   },
 
   startStream: async () => {

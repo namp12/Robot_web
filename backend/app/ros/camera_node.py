@@ -58,22 +58,35 @@ class CameraNodeHandler:
             if self._latest_frame_jpeg and (time.time() - self._last_msg_time < 3.0):
                 frame = self._latest_frame_jpeg
             else:
-                # Proxy directly from Raspberry Pi Camera stream (port 8080)
-                try:
-                    req = urllib.request.urlopen(settings.CAMERA_STREAM_URL, timeout=1.0)
-                    stream_bytes = b''
-                    for _ in range(50):
-                        stream_bytes += req.read(1024)
-                        a = stream_bytes.find(b'\xff\xd8')
-                        b = stream_bytes.find(b'\xff\xd9')
-                        if a != -1 and b != -1 and b > a:
-                            frame = stream_bytes[a:b+2]
-                            self._latest_frame_jpeg = frame
-                            self._last_msg_time = time.time()
+                # Proxy directly from YOLO AI Stream (port 5050) or Pi Camera stream (port 8080)
+                urls_to_try = [
+                    "http://localhost:5050/video_feed",
+                    "http://127.0.0.1:5050/video_feed",
+                    settings.CAMERA_STREAM_URL,
+                    "http://192.168.61.135:8080/video_feed",
+                    "http://127.0.0.1:8080/video_feed"
+                ]
+                got_frame = False
+                for target_url in urls_to_try:
+                    try:
+                        req = urllib.request.urlopen(target_url, timeout=1.0)
+                        stream_bytes = b''
+                        for _ in range(50):
+                            stream_bytes += req.read(1024)
+                            a = stream_bytes.find(b'\xff\xd8')
+                            b = stream_bytes.find(b'\xff\xd9')
+                            if a != -1 and b != -1 and b > a:
+                                frame = stream_bytes[a:b+2]
+                                self._latest_frame_jpeg = frame
+                                self._last_msg_time = time.time()
+                                got_frame = True
+                                break
+                        if got_frame:
                             break
-                    else:
-                        frame = self._create_bright_test_pattern()
-                except Exception:
+                    except Exception:
+                        continue
+
+                if not got_frame:
                     frame = self._create_bright_test_pattern()
 
             yield (b'--frame\r\n'

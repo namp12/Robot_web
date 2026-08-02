@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import StatusBadge from '../components/StatusBadge';
+import AIOverlay from '../components/AIOverlay';
+import useTelemetry from '../hooks/useTelemetry';
 import { Camera as CameraIcon, Play, Square, Camera as SnapIcon, Sparkles } from 'lucide-react';
 import cameraService from '../services/camera.service';
 
 export const Camera: React.FC = () => {
+  const { telemetry } = useTelemetry();
   const [streaming, setStreaming] = useState(true);
   const [loading, setLoading] = useState(false);
   const [lastCapture, setLastCapture] = useState<string | null>(null);
@@ -42,6 +45,7 @@ export const Camera: React.FC = () => {
   };
 
   const streamUrl = cameraService.getStreamUrl();
+  const aiDetections = telemetry?.ai_detections || [];
 
   return (
     <div className="space-y-6">
@@ -68,6 +72,8 @@ export const Camera: React.FC = () => {
                     alt="ROS2 Live Camera Feed"
                     className="w-full h-full object-contain bg-slate-950"
                   />
+                  {/* Superimpose AI Detection Bounding Boxes */}
+                  <AIOverlay detections={aiDetections} />
                   <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1 bg-black/60 backdrop-blur rounded-full text-xs font-mono text-emerald-400 border border-emerald-500/30 pointer-events-none">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                     LIVE ROS2 FEED

@@ -16,6 +16,9 @@ export const AIOverlay: React.FC<AIOverlayProps> = ({ detections }) => {
   return (
     <div className="absolute inset-0 pointer-events-none z-10 font-mono text-[10px]">
       {detections.map((det, index) => {
+        if (!det || !det.bbox || !Array.isArray(det.bbox) || det.bbox.length < 4) {
+          return null;
+        }
         const [ymin, xmin, ymax, xmax] = det.bbox;
         
         // Convert to percentage values for overlay scaling
