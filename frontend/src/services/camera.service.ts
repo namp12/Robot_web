@@ -9,8 +9,8 @@ export const cameraService = {
   getStreamUrl: (): string => {
     const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
     const protocol = typeof window !== 'undefined' ? window.location.protocol : 'http:';
-    // Dynamic stream URL from backend API (proxies ROS2 /camera/image_raw topic & HTTP MJPEG stream)
-    return `${protocol}//${hostname}:8000/api/camera/stream`;
+    // Direct link to Windows YOLO AI Stream (Port 5050) for 0ms delay and instant sync
+    return `${protocol}//${hostname}:5050/video_feed`;
   },
 
   startStream: async () => {
