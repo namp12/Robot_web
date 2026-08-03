@@ -26,7 +26,8 @@ class TopicPublishersHandler:
             self.cmd_vel_pub = self.node.create_publisher(Twist, "/cmd_vel", 10)
             self.camera_ctrl_pub = self.node.create_publisher(String, "/camera/control", 10)
             self.slam_ctrl_pub = self.node.create_publisher(String, "/slam/control", 10)
-            self.esp32_serial_tx_pub = self.node.create_publisher(String, "/robot/move", 10)
+            self.esp32_serial_tx_pub = self.node.create_publisher(String, "/esp32/serial_tx", 10)
+            self.robot_move_pub = self.node.create_publisher(String, "/robot/move", 10)
             self.mode_cmd_pub = self.node.create_publisher(String, "/robot/mode_cmd", 10)
 
     def set_ws_client(self, ws):
@@ -69,9 +70,8 @@ class TopicPublishersHandler:
                 logger.error(f"Failed to send move command over WebSocket: {e}")
             return
 
-        if not RCLPY_AVAILABLE or not self.esp32_serial_tx_pub:
+        if not RCLPY_AVAILABLE:
             logger.info(f"[Publishers Fallback -> HTTP Pi] /robot/move: '{text}'")
-            # Send HTTP POST to Raspberry Pi 8001 HTTP Bridge in background thread
             def _send_http():
                 import requests
                 for host in ["192.168.61.135", "127.0.0.1", "localhost"]:
@@ -85,7 +85,10 @@ class TopicPublishersHandler:
             return
         msg = String()
         msg.data = text
-        self.esp32_serial_tx_pub.publish(msg)
+        if self.esp32_serial_tx_pub:
+            self.esp32_serial_tx_pub.publish(msg)
+        if hasattr(self, 'robot_move_pub') and self.robot_move_pub:
+            self.robot_move_pub.publish(msg)
 
     def publish_mode_cmd(self, mode: str):
         if self._ws_client:
