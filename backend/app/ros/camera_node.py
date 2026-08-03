@@ -49,55 +49,75 @@ class CameraNodeHandler:
             logger.error(f"Error processing ROS2 image frame: {e}")
 
     def generate_mjpeg_stream(self) -> Generator[bytes, None, None]:
-        """Generator producing MJPEG stream for Web Browser."""
+        """Generator producing MJPEG stream for Web Browser (Prioritizes YOLO AI Stream on Port 5050)."""
         import urllib.request
         from app.config.settings import settings
 
         while True:
-            # Check if frame is fresh (received in last 3 seconds from local ROS2 topic)
-            if self._latest_frame_jpeg and (time.time() - self._last_msg_time < 3.0):
-                frame = self._latest_frame_jpeg
-            else:
-                # Proxy directly from YOLO AI Stream (port 5050) or Pi Camera stream (port 8080)
-                urls_to_try = [
-                    "http://localhost:5050/video_feed",
-                    "http://127.0.0.1:5050/video_feed",
-                    f"http://{getattr(settings, 'PI_IP', '192.168.61.135')}:8080/video_feed",
-                    "http://127.0.0.1:8080/video_feed"
-                ]
-                got_frame = False
-                for target_url in urls_to_try:
-                    try:
-                        req = urllib.request.urlopen(target_url, timeout=1.0)
-                        stream_bytes = b''
-                        for _ in range(200):  # Allow up to 400KB per JPEG frame
-                            chunk = req.read(2048)
-                            if not chunk:
-                                break
-                            stream_bytes += chunk
-                            a = stream_bytes.find(b'\xff\xd8')
-                            b = stream_bytes.find(b'\xff\xd9', a) if a != -1 else -1
-                            if a != -1 and b != -1 and b > a:
-                                frame = stream_bytes[a:b+2]
-                                self._latest_frame_jpeg = frame
-                                self._last_msg_time = time.time()
-                                got_frame = True
-                                try:
-                                    req.close()
-                                except Exception:
-                                    pass
-                                break
-                        if got_frame:
-                            break
-                    except Exception:
-                        continue
+            frame = None
+            got_yolo_frame = False
 
-                if not got_frame:
-                    frame = self._create_bright_test_pattern()
+            # 1. First priority: Check YOLO AI Stream on Port 5050 (has green bounding boxes & FPS)
+            for yolo_url in ["http://localhost:5050/video_feed", "http://127.0.0.1:5050/video_feed"]:
+                try:
+                    req = urllib.request.urlopen(yolo_url, timeout=0.8)
+                    stream_bytes = b''
+                    for _ in range(150):  # Allow up to 300KB
+                        chunk = req.read(2048)
+                        if not chunk:
+                            break
+                        stream_bytes += chunk
+                        a = stream_bytes.find(b'\xff\xd8')
+                        b = stream_bytes.find(b'\xff\xd9', a) if a != -1 else -1
+                        if a != -1 and b != -1 and b > a:
+                            frame = stream_bytes[a:b+2]
+                            got_yolo_frame = True
+                            try:
+                                req.close()
+                            except Exception:
+                                pass
+                            break
+                    if got_yolo_frame:
+                        break
+                except Exception:
+                    continue
+
+            # 2. Second priority: If YOLO AI is not running, fallback to ROS2 /camera/image_raw or Pi 8080
+            if not got_yolo_frame:
+                if self._latest_frame_jpeg and (time.time() - self._last_msg_time < 3.0):
+                    frame = self._latest_frame_jpeg
+                else:
+                    # Try Pi Camera Direct Stream (Port 8080)
+                    pi_ip = getattr(settings, 'PI_IP', '192.168.61.135')
+                    for fallback_url in [f"http://{pi_ip}:8080/video_feed", "http://127.0.0.1:8080/video_feed"]:
+                        try:
+                            req = urllib.request.urlopen(fallback_url, timeout=0.8)
+                            stream_bytes = b''
+                            for _ in range(150):
+                                chunk = req.read(2048)
+                                if not chunk:
+                                    break
+                                stream_bytes += chunk
+                                a = stream_bytes.find(b'\xff\xd8')
+                                b = stream_bytes.find(b'\xff\xd9', a) if a != -1 else -1
+                                if a != -1 and b != -1 and b > a:
+                                    frame = stream_bytes[a:b+2]
+                                    try:
+                                        req.close()
+                                    except Exception:
+                                        pass
+                                    break
+                            if frame:
+                                break
+                        except Exception:
+                            continue
+
+            if frame is None:
+                frame = self._create_bright_test_pattern()
 
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            time.sleep(0.04)  # ~25 FPS
+            time.sleep(0.033)  # ~30 FPS
 
     def _create_bright_test_pattern(self) -> bytes:
         """Create a high-visibility, high-contrast SpaceX industrial test card with color bars and live clock."""
