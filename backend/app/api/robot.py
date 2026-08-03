@@ -66,15 +66,11 @@ async def get_robot_tf():
 async def send_control_command(
     cmd: ControlCommandRequest
 ):
-    """POST /api/robot/move - Publish movement command to /cmd_vel and /robot/move."""
-    # 1. Enforce Mode Manager Restrictions
+    """POST /api/robot/move - Publish movement command to /cmd_vel and /esp32/serial_tx."""
+    # 1. Allow manual web control by resetting mode to MANUAL if needed
     current_mode = telemetry_store.get_snapshot().get("mode", "MANUAL")
-    if current_mode == "ROS":
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail="Manual control blocked: Robot is in ROS mode")
-    elif current_mode == "AUTO":
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail="Manual control blocked: Robot is in AUTO mode")
+    if current_mode in ["ROS", "AUTO"]:
+        telemetry_store.update_mode("MANUAL")
 
     # 2. Validate Command
     VALID_COMMANDS = {
@@ -89,8 +85,7 @@ async def send_control_command(
         raise HTTPException(status_code=400, detail=f"Invalid control command: {cmd.command}")
 
     # 3. Handle Speed Conversion
-    speed = max(0, min(255, cmd.speed)) # Supports 0-100 or raw PWM 0-255. Let's clamp to 255
-    # If speed is within 0-100 limit, we scale it
+    speed = max(0, min(255, cmd.speed))
     if speed <= 100:
         s = speed / 100.0
         pwm_val = int(s * 255)
@@ -133,23 +128,8 @@ async def send_control_command(
     # 4. Publish standard Twist to /cmd_vel
     publishers_handler.publish_cmd_vel(linear_x, linear_y, angular_z)
 
-    # 5. Map new standardized commands back to user's old ESP32 command set
-    # mapping: FORWARD -> tien, BACKWARD -> lui, LEFT/STRAFE_LEFT -> trai, RIGHT/STRAFE_RIGHT -> phai, STOP -> dung
-    esp_cmd_word = "dung"
-    
-    if command in ["FORWARD", "DIAGONAL_FRONT_LEFT", "DIAGONAL_FRONT_RIGHT"]:
-        esp_cmd_word = "tien"
-    elif command in ["BACKWARD", "DIAGONAL_REAR_LEFT", "DIAGONAL_REAR_RIGHT"]:
-        esp_cmd_word = "lui"
-    elif command in ["ROTATE_LEFT", "STRAFE_LEFT"]:
-        esp_cmd_word = "trai"
-    elif command in ["ROTATE_RIGHT", "STRAFE_RIGHT"]:
-        esp_cmd_word = "phai"
-    else:
-        esp_cmd_word = "dung"
-
-    # Format as older protocol: "<command> <pwm>"
-    text_cmd = f"{esp_cmd_word} {pwm_val}" if esp_cmd_word != "dung" else "dung"
+    # 5. Format standardized ESP32 command string: "COMMAND SPEED"
+    text_cmd = f"{command} {pwm_val}" if command != "STOP" else "STOP"
     publishers_handler.publish_robot_move(text_cmd)
 
     return {
