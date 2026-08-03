@@ -14,11 +14,41 @@ except ImportError:
 
 
 class CameraNodeHandler:
-    """ROS2 Camera Image Streamer (Converts /camera/image_raw into MJPEG Stream)."""
+    """ROS2 Camera Image Streamer (Converts /camera/image_raw or YOLO AI Port 5050 into MJPEG Stream)."""
 
     def __init__(self):
         self._latest_frame_jpeg: bytes | None = None
         self._last_msg_time: float = 0
+        self._latest_yolo_jpeg: bytes | None = None
+        self._last_yolo_time: float = 0
+
+        # Start persistent background reader thread for YOLO AI Stream (Port 5050)
+        import threading
+        threading.Thread(target=self._yolo_fetch_loop, daemon=True).start()
+
+    def _yolo_fetch_loop(self):
+        """Persistent background reader thread for YOLO AI Stream on port 5050 (0ms latency, zero connection overhead)."""
+        import urllib.request
+        while True:
+            try:
+                req = urllib.request.urlopen("http://localhost:5050/video_feed", timeout=2.0)
+                buffer = b''
+                while True:
+                    chunk = req.read(4096)
+                    if not chunk:
+                        break
+                    buffer += chunk
+                    a = buffer.find(b'\xff\xd8')
+                    b = buffer.find(b'\xff\xd9', a) if a != -1 else -1
+                    if a != -1 and b != -1 and b > a:
+                        jpeg_frame = buffer[a:b+2]
+                        buffer = buffer[b+2:]
+                        self._latest_yolo_jpeg = jpeg_frame
+                        self._last_yolo_time = time.time()
+                    elif len(buffer) > 500000:
+                        buffer = b''
+            except Exception:
+                time.sleep(0.5)
 
     def handle_image_msg(self, msg):
         """Callback processing ROS2 sensor_msgs/msg/Image into JPEG bytes."""
@@ -55,62 +85,40 @@ class CameraNodeHandler:
 
         while True:
             frame = None
-            got_yolo_frame = False
 
-            # 1. First priority: Check YOLO AI Stream on Port 5050 (has green bounding boxes & FPS)
-            for yolo_url in ["http://localhost:5050/video_feed", "http://127.0.0.1:5050/video_feed"]:
-                try:
-                    req = urllib.request.urlopen(yolo_url, timeout=0.8)
-                    stream_bytes = b''
-                    for _ in range(150):  # Allow up to 300KB
-                        chunk = req.read(2048)
-                        if not chunk:
-                            break
-                        stream_bytes += chunk
-                        a = stream_bytes.find(b'\xff\xd8')
-                        b = stream_bytes.find(b'\xff\xd9', a) if a != -1 else -1
-                        if a != -1 and b != -1 and b > a:
-                            frame = stream_bytes[a:b+2]
-                            got_yolo_frame = True
-                            try:
-                                req.close()
-                            except Exception:
-                                pass
-                            break
-                    if got_yolo_frame:
-                        break
-                except Exception:
-                    continue
+            # 1. First priority: Fresh YOLO AI Stream from Port 5050 (has green bounding boxes & FPS)
+            if self._latest_yolo_jpeg and (time.time() - self._last_yolo_time < 2.0):
+                frame = self._latest_yolo_jpeg
 
-            # 2. Second priority: If YOLO AI is not running, fallback to ROS2 /camera/image_raw or Pi 8080
-            if not got_yolo_frame:
-                if self._latest_frame_jpeg and (time.time() - self._last_msg_time < 3.0):
-                    frame = self._latest_frame_jpeg
-                else:
-                    # Try Pi Camera Direct Stream (Port 8080)
-                    pi_ip = getattr(settings, 'PI_IP', '192.168.61.135')
-                    for fallback_url in [f"http://{pi_ip}:8080/video_feed", "http://127.0.0.1:8080/video_feed"]:
-                        try:
-                            req = urllib.request.urlopen(fallback_url, timeout=0.8)
-                            stream_bytes = b''
-                            for _ in range(150):
-                                chunk = req.read(2048)
-                                if not chunk:
-                                    break
-                                stream_bytes += chunk
-                                a = stream_bytes.find(b'\xff\xd8')
-                                b = stream_bytes.find(b'\xff\xd9', a) if a != -1 else -1
-                                if a != -1 and b != -1 and b > a:
-                                    frame = stream_bytes[a:b+2]
-                                    try:
-                                        req.close()
-                                    except Exception:
-                                        pass
-                                    break
-                            if frame:
+            # 2. Second priority: ROS2 /camera/image_raw topic frame
+            elif self._latest_frame_jpeg and (time.time() - self._last_msg_time < 3.0):
+                frame = self._latest_frame_jpeg
+
+            # 3. Third priority: Pi Direct Stream (Port 8080)
+            else:
+                pi_ip = getattr(settings, 'PI_IP', '192.168.61.135')
+                for fallback_url in [f"http://{pi_ip}:8080/video_feed", "http://127.0.0.1:8080/video_feed"]:
+                    try:
+                        req = urllib.request.urlopen(fallback_url, timeout=0.8)
+                        stream_bytes = b''
+                        for _ in range(100):
+                            chunk = req.read(2048)
+                            if not chunk:
                                 break
-                        except Exception:
-                            continue
+                            stream_bytes += chunk
+                            a = stream_bytes.find(b'\xff\xd8')
+                            b = stream_bytes.find(b'\xff\xd9', a) if a != -1 else -1
+                            if a != -1 and b != -1 and b > a:
+                                frame = stream_bytes[a:b+2]
+                                try:
+                                    req.close()
+                                except Exception:
+                                    pass
+                                break
+                        if frame:
+                            break
+                    except Exception:
+                        continue
 
             if frame is None:
                 frame = self._create_bright_test_pattern()
