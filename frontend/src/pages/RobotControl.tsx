@@ -24,7 +24,9 @@ import robotService from '../services/robot.service';
 
 export const RobotControl: React.FC = () => {
   const { telemetry } = useTelemetry();
-  const currentMode = telemetry?.mode || 'MANUAL';
+  const rawMode = (telemetry?.mode || 'MANUAL').toUpperCase();
+  const isManual = rawMode.includes('MANUAL') || rawMode === 'IDLE' || rawMode === 'ONLINE' || rawMode === 'OK';
+  const currentMode = isManual ? 'MANUAL' : rawMode;
   
   const [speedPercent, setSpeedPercent] = useState<number>(60);
   const [lastCmd, setLastCmd] = useState<string>('STOP');
@@ -34,8 +36,8 @@ export const RobotControl: React.FC = () => {
     setLastCmd(command);
     
     // Ignore commands if robot is not in MANUAL mode
-    if (currentMode !== 'MANUAL' && command !== 'STOP') {
-      console.warn(`Control rejected: Robot is currently in ${currentMode} mode.`);
+    if (!isManual && command !== 'STOP') {
+      console.warn(`Control rejected: Robot is currently in ${rawMode} mode.`);
       return;
     }
 
@@ -44,7 +46,7 @@ export const RobotControl: React.FC = () => {
     } catch (e) {
       console.error('Failed to send control command', e);
     }
-  }, [currentMode, speedPercent]);
+  }, [isManual, rawMode, speedPercent]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

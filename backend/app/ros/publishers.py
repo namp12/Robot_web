@@ -70,7 +70,18 @@ class TopicPublishersHandler:
             return
 
         if not RCLPY_AVAILABLE or not self.esp32_serial_tx_pub:
-            logger.info(f"[Publishers Fallback] /robot/move: '{text}'")
+            logger.info(f"[Publishers Fallback -> HTTP Pi] /robot/move: '{text}'")
+            # Send HTTP POST to Raspberry Pi 8001 HTTP Bridge in background thread
+            def _send_http():
+                import requests
+                for host in ["192.168.61.135", "127.0.0.1", "localhost"]:
+                    try:
+                        requests.post(f"http://{host}:8001/command", json={"text": text}, timeout=0.5)
+                        break
+                    except Exception:
+                        pass
+            import threading
+            threading.Thread(target=_send_http, daemon=True).start()
             return
         msg = String()
         msg.data = text
