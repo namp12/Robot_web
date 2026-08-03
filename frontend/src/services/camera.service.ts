@@ -7,8 +7,10 @@ export const cameraService = {
   },
 
   getStreamUrl: (): string => {
-    // Direct link to PC YOLO AI Stream (Port 5050) with green bounding boxes & FPS overlay
-    return 'http://localhost:5050/video_feed';
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const protocol = typeof window !== 'undefined' ? window.location.protocol : 'http:';
+    // Dynamic stream URL from backend API (proxies ROS2 /camera/image_raw topic & HTTP MJPEG stream)
+    return `${protocol}//${hostname}:8000/api/camera/stream`;
   },
 
   startStream: async () => {
