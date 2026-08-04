@@ -15,13 +15,23 @@ export const LiDAR: React.FC = () => {
   useEffect(() => {
     const fetchScan = async () => {
       try {
+        const piIp = '192.168.61.135';
+        const res = await fetch(`http://${piIp}:8001/scan`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.ranges && data.ranges.length > 0) {
+            setHttpScan(data);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      try {
         const data = await robotService.getScan();
         if (data && data.ranges && data.ranges.length > 0) {
           setHttpScan(data);
         }
-      } catch (e) {
-        // Ignore fallback errors
-      }
+      } catch (e) {}
     };
     fetchScan();
     const interval = setInterval(fetchScan, 100);
@@ -178,8 +188,8 @@ export const LiDAR: React.FC = () => {
     };
   }, [telemetry, httpScan, maxRange, colorScheme]);
 
-  const currentScan = (telemetry?.scan?.ranges?.length ? telemetry.scan : httpScan) || telemetry?.scan;
-  const totalPoints = currentScan?.ranges?.length || 360;
+  const currentScan = (httpScan?.ranges?.length ? httpScan : telemetry?.scan) || httpScan || telemetry?.scan;
+  const totalPoints = currentScan?.ranges?.length || 720;
   const isScanActive = true;
 
   return (
