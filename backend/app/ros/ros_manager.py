@@ -59,7 +59,10 @@ class ROS2Manager:
             telemetry_store.update_connection(True)
             logger.info("✅ [ROS2 Manager] MultiThreadedExecutor background thread started successfully.")
         except Exception as e:
-            logger.error(f"❌ Failed to start ROS2 Manager: {e}")
+            logger.warning(f"⚠️ [ROS2 Manager] rclpy node init fallback ({e}). Connecting to local WebSocket bridge at ws://127.0.0.1:8090...")
+            self._running = True
+            self._thread = threading.Thread(target=self._ws_client_loop, args=("ws://127.0.0.1:8090",), daemon=True)
+            self._thread.start()
 
     def _spin_loop(self):
         logger.info("🔄 [ROS2 Manager] MultiThreadedExecutor spin loop active...")
