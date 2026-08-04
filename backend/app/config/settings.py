@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     PI_COMMAND_URL: str = os.getenv("PI_COMMAND_URL", f"http://{PI_IP}:8001/command")
     CAMERA_STREAM_URL: str = os.getenv("CAMERA_STREAM_URL", f"http://{PI_IP}:8080/video_feed")
 
+    # ShopAIKey API Cloud Integration
+    SHOPAIKEY_API_KEY: str = os.getenv("SHOPAIKEY_API_KEY", "sk-j7Oux1kadgbj4FF2oM2jXKyLsO8p3O6khSmFNMJh8LNgwxuI")
+    SHOPAIKEY_BASE_URL: str = os.getenv("SHOPAIKEY_BASE_URL", "https://api.shopaikey.com/v1")
+    SHOPAIKEY_MODEL: str = os.getenv("SHOPAIKEY_MODEL", "gpt-4o-mini")
+
     model_config = ConfigDict(
         env_file=".env",
         extra="ignore"

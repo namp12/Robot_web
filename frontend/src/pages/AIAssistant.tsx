@@ -104,19 +104,36 @@ export const AIAssistant: React.FC = () => {
     }
   };
 
+  const [aiState, setAiState] = useState<'LISTENING' | 'STT' | 'THINKING' | 'SPEAKING'>('LISTENING');
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <BotMessageSquare className="w-6 h-6 text-accent-cyan" />
-            <span>AI Assistant Copilot</span>
+            <span>AI Assistant Copilot - Robot Kim Qui</span>
           </h1>
           <p className="text-xs text-slate-400">Trò chuyện trực tiếp & thu thập hội thoại thời gian thực qua Mic của Robot</p>
         </div>
-        <Button variant="secondary" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={syncConversations}>
-          Đồng bộ thủ công
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Trạng thái hoạt động AI Intuitive State Badge */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-full text-xs font-mono">
+            {loading ? (
+              <span className="flex items-center gap-1.5 text-amber-400 animate-pulse">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> 🧠 ĐANG SUY LUẬN (LLM)
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-emerald-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> 🎧 ĐANG LẮNG NGHE (MICRO ACTIVE)
+              </span>
+            )}
+          </div>
+
+          <Button variant="secondary" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={syncConversations}>
+            Đồng bộ ngay
+          </Button>
+        </div>
       </div>
 
       <Card className="flex flex-col h-[650px] p-0 overflow-hidden border border-slate-800 bg-slate-900/40 backdrop-blur-md">
@@ -138,9 +155,9 @@ export const AIAssistant: React.FC = () => {
           ))}
           <div ref={chatEndRef} />
           {loading && (
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-400 p-2">
-              <Loader2 className="w-4 h-4 animate-spin text-accent-cyan" />
-              <span>Robot đang suy nghĩ...</span>
+            <div className="flex items-center gap-2 text-xs font-mono text-amber-400 p-2 bg-amber-500/10 rounded-xl border border-amber-500/20 w-fit animate-pulse">
+              <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+              <span>⚡ Kim Qui đang truy vấn ShopAIKey Cloud & trả lời...</span>
             </div>
           )}
         </div>
