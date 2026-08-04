@@ -261,7 +261,7 @@ class ROS2Manager:
                             except Exception as e:
                                 logger.error(f"Error parsing robot WS message: {e}")
                 except Exception as e:
-                    logger.warning(f"WebSocket client connection lost: {e}. Reading real scan from HTTP Pi (port 8001)...")
+                    logger.debug(f"Remote WS fallback: {e}")
                     try:
                         import requests
                         from app.config.settings import settings
