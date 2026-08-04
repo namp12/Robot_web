@@ -192,3 +192,25 @@ async def speak_text(data: SpeakRequest):
     """POST /api/robot/speak - Speak natural text out loud via TTS."""
     success = tts_service.speak(data.text)
     return {"status": "SUCCESS" if success else "FAILED", "text": data.text}
+
+
+class DetectionsRequest(BaseModel):
+    detections: List[Dict[str, Any]]
+
+@router.post("/detections")
+async def update_detections(data: DetectionsRequest):
+    """POST /api/v1/robot/detections - Update AI vision detections list on Web Dashboard."""
+    telemetry_store.update_ai_detections(data.detections)
+    return {"status": "SUCCESS", "count": len(data.detections)}
+
+
+class ConversationRequest(BaseModel):
+    prompt: str
+    reply: str
+
+@router.post("/conversation")
+async def record_conversation(data: ConversationRequest):
+    """POST /api/v1/robot/conversation - Save voice STT & LLM conversation log into database."""
+    from app.services.ai_service import ai_service
+    log_entry = await ai_service.log_conversation(data.prompt, data.reply)
+    return {"status": "SUCCESS", "log": log_entry}
