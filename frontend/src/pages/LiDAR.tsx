@@ -24,7 +24,7 @@ export const LiDAR: React.FC = () => {
       }
     };
     fetchScan();
-    const interval = setInterval(fetchScan, 300);
+    const interval = setInterval(fetchScan, 100);
     return () => clearInterval(interval);
   }, []);
 
@@ -104,8 +104,8 @@ export const LiDAR: React.FC = () => {
       ctx.fillStyle = '#22C55E';
       ctx.fillText('+Y (Left)', cx - axisLen - 45, cy - 5);
 
-      // 4. Extract Real ROS2 LaserScan Ranges (WebSocket, HTTP or Continuous Visualizer Fallback)
-      const scan = (telemetry?.scan?.ranges?.length ? telemetry.scan : httpScan) || telemetry?.scan;
+      // 4. Extract Real ROS2 LaserScan Ranges (HTTP direct 10Hz stream preferred over WebSocket)
+      const scan = (httpScan?.ranges?.length ? httpScan : telemetry?.scan) || httpScan || telemetry?.scan;
       let ranges: number[] = scan?.ranges || [];
 
       // Fallback: If ranges are empty or 0, generate live room contour scan dots so canvas is always active
