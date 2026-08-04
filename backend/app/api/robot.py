@@ -129,7 +129,16 @@ async def send_control_command(
     publishers_handler.publish_cmd_vel(linear_x, linear_y, angular_z)
 
     # 5. Format standardized ESP32 command string: "COMMAND SPEED"
-    text_cmd = f"{command} {pwm_val}" if command != "STOP" else "STOP"
+    cmd_map = {
+        "FORWARD": f"tien {pwm_val}",
+        "BACKWARD": f"lui {pwm_val}",
+        "ROTATE_LEFT": f"xoay_trai {pwm_val}",
+        "ROTATE_RIGHT": f"xoay_phai {pwm_val}",
+        "STRAFE_LEFT": f"sang_trai {pwm_val}",
+        "STRAFE_RIGHT": f"sang_phai {pwm_val}",
+        "STOP": "dung"
+    }
+    text_cmd = cmd_map.get(command, f"{command} {pwm_val}")
     publishers_handler.publish_robot_move(text_cmd)
 
     return {

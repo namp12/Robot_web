@@ -199,7 +199,7 @@ class ROS2Manager:
             while self._running:
                 try:
                     logger.info(f"Connecting to remote robot WS: {url}...")
-                    async with websockets.connect(url, ping_interval=10, ping_timeout=10) as ws:
+                    async with websockets.connect(url, open_timeout=0.3, ping_interval=10, ping_timeout=10) as ws:
                         logger.info("✅ Connected to remote robot WebSocket!")
                         telemetry_store.update_connection(True)
                         publishers_handler.set_ws_client(ws)
@@ -266,7 +266,7 @@ class ROS2Manager:
                         import requests
                         from app.config.settings import settings
                         pi_ip = getattr(settings, "PI_IP", "192.168.61.135")
-                        res = requests.get(f"http://{pi_ip}:8001/scan", timeout=0.4)
+                        res = await asyncio.to_thread(requests.get, f"http://{pi_ip}:8001/scan", timeout=0.3)
                         if res.status_code == 200:
                             scan_json = res.json()
                             if scan_json and isinstance(scan_json, dict) and len(scan_json.get("ranges", [])) > 0:

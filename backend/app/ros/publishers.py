@@ -39,6 +39,25 @@ class TopicPublishersHandler:
             logger.info("🔌 [Publishers] Remote WebSocket client cleared.")
 
     def publish_robot_move(self, text: str):
+        # 1. Bắn HTTP POST trực tiếp tới Raspberry Pi 8001 (Không gia nhiệt / không nghẽn)
+        def _send_http():
+            import os
+            import requests
+            env_pi = os.getenv("PI_IP", "192.168.61.135")
+            candidates = [env_pi, "192.168.61.135", "192.168.60.157", "127.0.0.1", "localhost"]
+            seen = set()
+            hosts = [h for h in candidates if not (h in seen or seen.add(h))]
+            for host in hosts:
+                try:
+                    res = requests.post(f"http://{host}:8001/command", json={"text": text}, timeout=0.5)
+                    if res.status_code == 200:
+                        break
+                except Exception:
+                    pass
+        import threading
+        threading.Thread(target=_send_http, daemon=True).start()
+
+        # 2. Bắn tới WebSocket client nếu có
         if self._ws_client:
             import json
             import asyncio
@@ -64,31 +83,16 @@ class TopicPublishersHandler:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     loop.create_task(self._ws_client.send(msg_str))
-                else:
-                    loop.run_until_complete(self._ws_client.send(msg_str))
             except Exception as e:
                 logger.error(f"Failed to send move command over WebSocket: {e}")
             return
 
-        if not RCLPY_AVAILABLE:
-            logger.info(f"[Publishers Fallback -> HTTP Pi] /robot/move: '{text}'")
-            def _send_http():
-                import requests
-                for host in ["192.168.61.135", "127.0.0.1", "localhost"]:
-                    try:
-                        requests.post(f"http://{host}:8001/command", json={"text": text}, timeout=0.5)
-                        break
-                    except Exception:
-                        pass
-            import threading
-            threading.Thread(target=_send_http, daemon=True).start()
-            return
-        msg = String()
-        msg.data = text
-        if self.esp32_serial_tx_pub:
+        if RCLPY_AVAILABLE and self.esp32_serial_tx_pub:
+            msg = String()
+            msg.data = text
             self.esp32_serial_tx_pub.publish(msg)
-        if hasattr(self, 'robot_move_pub') and self.robot_move_pub:
-            self.robot_move_pub.publish(msg)
+            if hasattr(self, 'robot_move_pub') and self.robot_move_pub:
+                self.robot_move_pub.publish(msg)
 
     def publish_mode_cmd(self, mode: str):
         if self._ws_client:
@@ -130,8 +134,6 @@ class TopicPublishersHandler:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     loop.create_task(self._ws_client.send(msg_str))
-                else:
-                    loop.run_until_complete(self._ws_client.send(msg_str))
             except Exception as e:
                 logger.error(f"Failed to send cmd_vel command over WebSocket: {e}")
             return

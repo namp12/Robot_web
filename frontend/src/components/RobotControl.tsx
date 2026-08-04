@@ -33,18 +33,13 @@ export const RobotControl: React.FC = () => {
   const sendMove = useCallback(async (command: string, speedVal?: number) => {
     const activeSpeed = speedVal !== undefined ? speedVal : speedPercent;
     setLastCmd(command);
-    
-    if (!isManual && command !== 'STOP') {
-      console.warn(`Control rejected: Robot is currently in ${rawMode} mode.`);
-      return;
-    }
 
     try {
       await robotService.setControlCommand({ command, speed: activeSpeed });
     } catch (e) {
       console.error('Failed to send control command', e);
     }
-  }, [currentMode, speedPercent]);
+  }, [speedPercent]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
