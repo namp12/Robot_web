@@ -14,8 +14,8 @@ class WebSocketService {
 
   constructor() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    this.url = import.meta.env.VITE_WS_URL || `${protocol}//${host}/ws/status`;
+    const hostname = window.location.hostname || 'localhost';
+    this.url = import.meta.env.VITE_WS_URL || `${protocol}//${hostname}:8000/ws/status`;
   }
 
   public connect() {

@@ -249,6 +249,10 @@ class ROS2Manager:
                                     enc = tel.get("encoder_distance", 0.0)
                                     telemetry_store.update_encoders(enc, enc, enc, enc)
                                     telemetry_store.update_encoder_distance(enc)
+
+                                    # Update real LiDAR scan data
+                                    if "scan" in tel and isinstance(tel["scan"], dict):
+                                        telemetry_store.update_scan(tel["scan"])
                                     
                                     # Refresh active status connection
                                     telemetry_store.update_connection(True)
@@ -257,10 +261,21 @@ class ROS2Manager:
                             except Exception as e:
                                 logger.error(f"Error parsing robot WS message: {e}")
                 except Exception as e:
-                    logger.warning(f"WebSocket client connection lost: {e}. Reconnecting in 3s...")
-                    telemetry_store.update_connection(False)
+                    logger.warning(f"WebSocket client connection lost: {e}. Reading real scan from HTTP Pi (port 8001)...")
+                    try:
+                        import requests
+                        from app.config.settings import settings
+                        pi_ip = getattr(settings, "PI_IP", "192.168.61.135")
+                        res = requests.get(f"http://{pi_ip}:8001/scan", timeout=0.4)
+                        if res.status_code == 200:
+                            scan_json = res.json()
+                            if scan_json and isinstance(scan_json, dict) and len(scan_json.get("ranges", [])) > 0:
+                                telemetry_store.update_scan(scan_json)
+                                telemetry_store.update_connection(True)
+                    except Exception:
+                        pass
                     publishers_handler.set_ws_client(None)
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(1)
 
         loop = asyncio.new_event_loop()
         try:

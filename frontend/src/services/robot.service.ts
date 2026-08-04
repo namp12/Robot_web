@@ -14,6 +14,10 @@ export const robotService = {
     return api.get('/robot/battery');
   },
 
+  getScan: async () => {
+    return api.get('/robot/scan');
+  },
+
   emergencyStop: async () => {
     return api.post('/robot/emergency-stop');
   },

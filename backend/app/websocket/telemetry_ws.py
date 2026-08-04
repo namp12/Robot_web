@@ -57,7 +57,7 @@ async def websocket_endpoint(websocket: WebSocket):
             }
 
             await websocket.send_json(payload)
-            await asyncio.sleep(1.0)  # Stream at 1Hz rate without blocking loop
+            await asyncio.sleep(0.1)  # Stream at 10Hz rate matching Lidar C1 frequency
     except WebSocketDisconnect:
         logger.info(f"WebSocket client disconnected: {websocket.client}")
     except RuntimeError as e:
