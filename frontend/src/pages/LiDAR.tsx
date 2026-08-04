@@ -128,26 +128,33 @@ export const LiDAR: React.FC = () => {
 
       if (ranges.length > 0) {
         ranges.forEach((dist, idx) => {
-          if (dist > 0.05 && dist <= maxRange) {
+          // Render all valid obstacle measurements (> 0.1m)
+          if (dist > 0.1) {
+            const clampedDist = Math.min(dist, maxRange);
             pointsDrawn++;
             // ROS2 standard angle offset: 0 rad = +X (Up), pi/2 = +Y (Left)
             const angle = angleMin + idx * angleIncrement;
-            const px = cx - (dist * Math.sin(angle)) * scale;
-            const py = cy - (dist * Math.cos(angle)) * scale;
+            const px = cx - (clampedDist * Math.sin(angle)) * scale;
+            const py = cy - (clampedDist * Math.cos(angle)) * scale;
 
             // RViz Rainbow Color Spectrum based on distance
             let pointColor = '#00F0FF';
             if (colorScheme === 'rviz') {
-              const normDist = dist / maxRange;
+              const normDist = clampedDist / maxRange;
               if (normDist < 0.25) pointColor = '#EF4444';       // Red (Close obstacle)
               else if (normDist < 0.5) pointColor = '#F59E0B';  // Amber
               else if (normDist < 0.75) pointColor = '#22C55E'; // Green
               else pointColor = '#3B82F6';                      // Blue (Far obstacle)
+            } else {
+              pointColor = '#00F0FF'; // Neon Cyan
             }
 
-            // Draw Discrete RViz Laser Point Dot (Square / Small Circle)
+            // Draw glowing RViz Laser Point Dot
+            ctx.shadowColor = pointColor;
+            ctx.shadowBlur = 4;
             ctx.fillStyle = pointColor;
-            ctx.fillRect(px - 1.5, py - 1.5, 3.5, 3.5);
+            ctx.fillRect(px - 2.5, py - 2.5, 5, 5);
+            ctx.shadowBlur = 0;
           }
         });
       }
