@@ -135,8 +135,8 @@ async def send_control_command(
         "BACKWARD": f"lui {pwm_val}",
         "ROTATE_LEFT": f"xoay_trai {pwm_val}",
         "ROTATE_RIGHT": f"xoay_phai {pwm_val}",
-        "STRAFE_LEFT": f"sang_trai {pwm_val}",
-        "STRAFE_RIGHT": f"sang_phai {pwm_val}",
+        "STRAFE_LEFT": f"trai {pwm_val}",
+        "STRAFE_RIGHT": f"phai {pwm_val}",
         "STOP": "dung"
     }
     text_cmd = cmd_map.get(command, f"{command} {pwm_val}")
