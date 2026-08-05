@@ -234,9 +234,19 @@ from pydantic import BaseModel
 class PiTextRequest(BaseModel):
     text: str
 
+from fastapi import Request
+
 @app.post("/command", tags=["AI Integration"])
-async def legacy_pi_command(data: PiTextRequest):
+async def legacy_pi_command(data: PiTextRequest, request: Request):
     """Bridge endpoint for AI Server commands."""
+    try:
+        client_ip = request.client.host
+        if client_ip and client_ip != "127.0.0.1":
+            with open("/tmp/last_pc_ip.txt", "w") as f:
+                f.write(client_ip)
+    except Exception:
+        pass
+
     raw_text = data.text.strip()
     if raw_text and raw_text != "giu_nguyen":
         from app.ros.publishers import publishers_handler
