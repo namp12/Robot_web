@@ -132,7 +132,7 @@ export const RobotControl: React.FC = () => {
     }
   }, [lastCmd]);
 
-  const isControlDisabled = currentMode !== 'MANUAL';
+  const isControlDisabled = false;
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
