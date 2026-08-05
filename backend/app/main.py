@@ -226,3 +226,46 @@ async def root():
 async def health_check():
     """System Health Endpoint."""
     return {"status": "ok"}
+
+
+# --- Legacy AI Server Client Compatibility Routes (/command, /tts, /conversation, etc.) ---
+from pydantic import BaseModel
+
+class PiTextRequest(BaseModel):
+    text: str
+
+@app.post("/command", tags=["AI Integration"])
+async def legacy_pi_command(data: PiTextRequest):
+    """Bridge endpoint for AI Server commands."""
+    raw_text = data.text.strip()
+    if raw_text and raw_text != "giu_nguyen":
+        from app.ros.publishers import publishers_handler
+        publishers_handler.publish_robot_move(raw_text)
+        logger.info(f"🤖 [AI CLIENT COMMAND] Broadcasted to ROS2: '{raw_text}'")
+    return {"status": "SUCCESS", "command": raw_text}
+
+@app.post("/tts", tags=["AI Integration"])
+async def legacy_pi_tts(data: PiTextRequest):
+    """Bridge endpoint for AI Server TTS text-to-speech."""
+    text = data.text.strip()
+    if text:
+        from app.services.tts_service import tts_service
+        tts_service.speak(text)
+        logger.info(f"🔊 [AI CLIENT TTS] '{text}'")
+    return {"status": "SUCCESS", "text": text}
+
+@app.post("/conversation", tags=["AI Integration"])
+async def legacy_pi_conversation(data: PiTextRequest):
+    return {"status": "SUCCESS"}
+
+@app.post("/detection", tags=["AI Integration"])
+async def legacy_pi_detection(data: PiTextRequest):
+    return {"status": "SUCCESS"}
+
+@app.post("/speech/partial", tags=["AI Integration"])
+async def legacy_pi_speech_partial(data: PiTextRequest):
+    return {"status": "SUCCESS"}
+
+@app.post("/speech/final", tags=["AI Integration"])
+async def legacy_pi_speech_final(data: PiTextRequest):
+    return {"status": "SUCCESS"}
