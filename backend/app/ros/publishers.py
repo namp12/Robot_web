@@ -39,15 +39,18 @@ class TopicPublishersHandler:
             logger.info("🔌 [Publishers] Remote WebSocket client cleared.")
 
     def publish_robot_move(self, text: str):
-        # 1. Bắn HTTP POST trực tiếp tới Raspberry Pi Cổng 8001
+        # 1. Bắn HTTP POST trực tiếp tới Raspberry Pi Cổng 8001 (Ưu tiên Loopback 127.0.0.1 0ms)
         def _send_http():
             import os
             import requests
-            pi_ip = os.getenv("PI_IP", "192.168.61.135")
-            try:
-                requests.post(f"http://{pi_ip}:8001/command", json={"text": text}, timeout=0.8)
-            except Exception as e:
-                logger.warning(f"HTTP move command to {pi_ip}:8001 failed: {e}")
+            target_hosts = ["127.0.0.1", os.getenv("PI_IP", "192.168.61.135")]
+            for host in target_hosts:
+                try:
+                    res = requests.post(f"http://{host}:8001/command", json={"text": text}, timeout=0.3)
+                    if res.status_code == 200:
+                        break
+                except Exception:
+                    continue
         import threading
         threading.Thread(target=_send_http, daemon=True).start()
 
