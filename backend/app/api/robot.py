@@ -140,6 +140,7 @@ async def send_control_command(
         "STOP": "dung"
     }
     text_cmd = cmd_map.get(command, f"{command} {pwm_val}")
+    logger.info(f"🕹️ [WEB COMMAND RECEIVED] Action: '{command}' (speed {speed}%) -> Output: '{text_cmd}'")
     publishers_handler.publish_robot_move(text_cmd)
 
     return {
