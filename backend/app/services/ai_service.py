@@ -97,5 +97,14 @@ class AIService:
             answer=answer
         )
 
+    @staticmethod
+    async def log_conversation(prompt: str, reply: str) -> dict:
+        try:
+            nosql_db.insert_conversation(1, prompt, reply)
+            return {"prompt": prompt, "reply": reply}
+        except Exception as err:
+            logger.error(f"Error logging conversation: {err}")
+            return {"prompt": prompt, "reply": reply, "error": str(err)}
+
 
 ai_service = AIService()
