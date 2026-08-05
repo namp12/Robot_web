@@ -45,6 +45,9 @@ class ROS2Manager:
 
         logger.info("🚀 Initializing rclpy and creating node 'robot_web_bridge'...")
         try:
+            import os
+            os.environ["CYCLONEDDS_URI"] = '<CycloneDDS><Domain id="any"><Discovery><MaxAutoParticipantIndex>500</MaxAutoParticipantIndex></Discovery></Domain></CycloneDDS>'
+
             if not rclpy.ok():
                 rclpy.init()
 
@@ -59,9 +62,11 @@ class ROS2Manager:
             telemetry_store.update_connection(True)
             logger.info("✅ [ROS2 Manager] MultiThreadedExecutor background thread started successfully.")
         except Exception as e:
-            logger.warning(f"⚠️ [ROS2 Manager] rclpy node init fallback ({e}). Connecting to local WebSocket bridge at ws://127.0.0.1:8090...")
+            logger.warning(f"⚠️ [ROS2 Manager] rclpy initialization warning/error: {e}. Switching to internal WebSocket client loop fallback...")
+            from app.config.settings import settings
+            robot_ws_url = getattr(settings, "ROBOT_WS_URL", "ws://127.0.0.1:8090")
             self._running = True
-            self._thread = threading.Thread(target=self._ws_client_loop, args=("ws://127.0.0.1:8090",), daemon=True)
+            self._thread = threading.Thread(target=self._ws_client_loop, args=(robot_ws_url,), daemon=True)
             self._thread.start()
 
     def _spin_loop(self):
