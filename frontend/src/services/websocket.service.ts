@@ -78,6 +78,10 @@ class WebSocketService {
     return () => this.connectionListeners.delete(onStateChange);
   }
 
+  public isConnected(): boolean {
+    return this.socket !== null && this.socket.readyState === WebSocket.OPEN;
+  }
+
   public send(data: any) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       const payload = typeof data === 'string' ? data : JSON.stringify(data);

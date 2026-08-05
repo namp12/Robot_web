@@ -35,14 +35,17 @@ export const RobotControl: React.FC = () => {
     const activeSpeed = speedVal !== undefined ? speedVal : speedPercent;
     setLastCmd(command);
 
-    // 1. Send instant 0ms command via WebSocket persistent pipe
-    wsService.send({
-      type: 'move',
-      command: command,
-      speed: activeSpeed
-    });
+    // 1. Send instant 0ms command via WebSocket persistent pipe if connected
+    if (wsService.isConnected()) {
+      wsService.send({
+        type: 'move',
+        command: command,
+        speed: activeSpeed
+      });
+      return;
+    }
 
-    // 2. HTTP backup fallback
+    // 2. Fallback to HTTP POST only when WebSocket is disconnected
     try {
       await robotService.setControlCommand({ command, speed: activeSpeed });
     } catch (e) {
