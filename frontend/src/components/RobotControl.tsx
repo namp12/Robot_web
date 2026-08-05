@@ -20,6 +20,7 @@ import {
   Settings 
 } from 'lucide-react';
 import robotService from '../services/robot.service';
+import wsService from '../services/websocket.service';
 
 export const RobotControl: React.FC = () => {
   const { telemetry } = useTelemetry();
@@ -34,6 +35,14 @@ export const RobotControl: React.FC = () => {
     const activeSpeed = speedVal !== undefined ? speedVal : speedPercent;
     setLastCmd(command);
 
+    // 1. Send instant 0ms command via WebSocket persistent pipe
+    wsService.send({
+      type: 'move',
+      command: command,
+      speed: activeSpeed
+    });
+
+    // 2. HTTP backup fallback
     try {
       await robotService.setControlCommand({ command, speed: activeSpeed });
     } catch (e) {
