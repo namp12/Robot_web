@@ -56,8 +56,36 @@ async def websocket_endpoint(websocket: WebSocket):
                 "horn": snapshot.get("horn", False),
             }
 
+            # Check for incoming WebSocket control commands from Web Client
+            try:
+                data_text = await asyncio.wait_for(websocket.receive_text(), timeout=0.1)
+                if data_text:
+                    import json
+                    msg = json.loads(data_text)
+                    if msg.get("type") == "move":
+                        cmd = msg.get("command", "STOP").upper()
+                        spd = max(0, min(255, int(msg.get("speed", 60))))
+                        s = spd / 100.0 if spd <= 100 else spd / 255.0
+                        pwm_val = int(s * 255)
+                        cmd_map = {
+                            "FORWARD": f"tien {pwm_val}",
+                            "BACKWARD": f"lui {pwm_val}",
+                            "ROTATE_LEFT": f"xoay_trai {pwm_val}",
+                            "ROTATE_RIGHT": f"xoay_phai {pwm_val}",
+                            "STRAFE_LEFT": f"trai {pwm_val}",
+                            "STRAFE_RIGHT": f"phai {pwm_val}",
+                            "STOP": "dung"
+                        }
+                        text_cmd = cmd_map.get(cmd, f"{cmd} {pwm_val}")
+                        from app.ros.publishers import publishers_handler
+                        publishers_handler.publish_robot_move(text_cmd)
+                        logger.info(f"⚡ [WS 0ms COMMAND] Action: '{cmd}' ({spd}%) -> ESP32: '{text_cmd}'")
+            except asyncio.TimeoutError:
+                pass
+            except Exception as e:
+                pass
+
             await websocket.send_json(payload)
-            await asyncio.sleep(0.1)  # Stream at 10Hz rate matching Lidar C1 frequency
     except WebSocketDisconnect:
         logger.info(f"WebSocket client disconnected: {websocket.client}")
     except RuntimeError as e:
