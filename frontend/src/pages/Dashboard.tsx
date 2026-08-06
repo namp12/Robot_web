@@ -28,6 +28,8 @@ import SensorPanel from '../components/SensorPanel';
 import CameraView from '../components/CameraView';
 import MapView from '../components/MapView';
 import RobotControl from '../components/RobotControl';
+import QuickPresetPanel from '../components/QuickPresetPanel';
+import QuickModePanel from '../components/QuickModePanel';
 
 export const Dashboard: React.FC = () => {
   const { telemetry, isConnected } = useTelemetry();
@@ -232,6 +234,9 @@ export const Dashboard: React.FC = () => {
           <StatusBadge status={isConnected ? 'ONLINE' : 'OFFLINE'} size="sm" />
         </div>
       </div>
+
+      {/* Quick Preset Mode Control System Panel V1 */}
+      <QuickPresetPanel />
 
       {/* Map Grid View */}
       <MapView />
