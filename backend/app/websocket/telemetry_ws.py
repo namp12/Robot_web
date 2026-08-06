@@ -62,28 +62,75 @@ async def websocket_endpoint(websocket: WebSocket):
                 if data_text:
                     import json
                     msg = json.loads(data_text)
-                    if msg.get("type") == "move":
+                    msg_type = msg.get("type")
+                    if msg_type == "move":
                         cmd = msg.get("command", "STOP").upper()
-                        spd = max(0, min(255, int(msg.get("speed", 60))))
-                        s = spd / 100.0 if spd <= 100 else spd / 255.0
-                        pwm_val = int(s * 255)
+                        raw_spd = max(0, min(255, int(msg.get("speed", 70))))
+                        if cmd == "STOP" or raw_spd == 0:
+                            pwm_val = 0
+                            s = 0.0
+                            speed = 0
+                        else:
+                            spd_pct = max(20, min(100, raw_spd if raw_spd <= 100 else int(raw_spd * 100 / 255)))
+                            pwm_val = int(65 + (spd_pct - 20) * (255 - 65) / 80.0)
+                            s = spd_pct / 100.0
+                            speed = spd_pct
+
+                        v_max = 1.0  # max linear speed (m/s)
+                        w_max = 1.5  # max angular speed (rad/s)
+
+                        linear_x = 0.0
+                        linear_y = 0.0
+                        angular_z = 0.0
+
+                        if cmd == "FORWARD":
+                            linear_x = v_max * s
+                        elif cmd == "BACKWARD":
+                            linear_x = -v_max * s
+                        elif cmd == "STRAFE_LEFT":
+                            linear_y = v_max * s
+                        elif cmd == "STRAFE_RIGHT":
+                            linear_y = -v_max * s
+                        elif cmd == "DIAGONAL_FRONT_LEFT":
+                            linear_x = v_max * s * 0.707
+                            linear_y = v_max * s * 0.707
+                        elif cmd == "DIAGONAL_FRONT_RIGHT":
+                            linear_x = v_max * s * 0.707
+                            linear_y = -v_max * s * 0.707
+                        elif cmd == "DIAGONAL_REAR_LEFT":
+                            linear_x = -v_max * s * 0.707
+                            linear_y = v_max * s * 0.707
+                        elif cmd == "DIAGONAL_REAR_RIGHT":
+                            linear_x = -v_max * s * 0.707
+                            linear_y = -v_max * s * 0.707
+                        elif cmd == "ROTATE_LEFT":
+                            angular_z = w_max * s
+                        elif cmd == "ROTATE_RIGHT":
+                            angular_z = -w_max * s
+
                         cmd_map = {
-                            "FORWARD": f"tien {pwm_val}",
-                            "BACKWARD": f"lui {pwm_val}",
-                            "ROTATE_LEFT": f"xoay_trai {pwm_val}",
-                            "ROTATE_RIGHT": f"xoay_phai {pwm_val}",
-                            "STRAFE_LEFT": f"trai {pwm_val}",
-                            "STRAFE_RIGHT": f"phai {pwm_val}",
+                            "FORWARD": f"tien {speed}",
+                            "BACKWARD": f"lui {speed}",
+                            "ROTATE_LEFT": f"xoay_trai {speed}",
+                            "ROTATE_RIGHT": f"xoay_phai {speed}",
+                            "STRAFE_LEFT": f"trai {speed}",
+                            "STRAFE_RIGHT": f"phai {speed}",
                             "STOP": "dung"
                         }
-                        text_cmd = cmd_map.get(cmd, f"{cmd} {pwm_val}")
+                        text_cmd = cmd_map.get(cmd, f"{cmd} {speed}")
                         from app.ros.publishers import publishers_handler
+                        publishers_handler.publish_cmd_vel(linear_x, linear_y, angular_z)
                         publishers_handler.publish_robot_move(text_cmd)
-                        logger.info(f"⚡ [WS 0ms COMMAND] Action: '{cmd}' ({spd}%) -> ESP32: '{text_cmd}'")
+                        logger.info(f"⚡ [WS 0ms COMMAND] Action: '{cmd}' ({speed}%) -> Output: '{text_cmd}', Twist: ({linear_x}, {linear_y}, {angular_z})")
+                    elif msg_type in ["speed", "speed_limit"]:
+                        spd_val = max(20, min(100, int(msg.get("speed", 70))))
+                        from app.ros.publishers import publishers_handler
+                        publishers_handler.publish_robot_move(f"speed {spd_val}")
+                        logger.info(f"⚡ [WS SPEED LIMIT] Published speed limit {spd_val}% to system")
             except asyncio.TimeoutError:
                 pass
             except Exception as e:
-                pass
+                logger.error(f"WebSocket move error: {e}")
 
             await websocket.send_json(payload)
     except WebSocketDisconnect:

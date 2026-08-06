@@ -83,14 +83,17 @@ async def send_control_command(
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail=f"Invalid control command: {cmd.command}")
 
-    # 3. Handle Speed Conversion
-    speed = max(0, min(255, cmd.speed))
-    if speed <= 100:
-        s = speed / 100.0
-        pwm_val = int(s * 255)
+    # 3. Handle Speed Conversion (Full Linear Unlocked Range: 20% -> 60 PWM, 100% -> 255 PWM)
+    speed_input = max(0, min(255, cmd.speed))
+    if command == "STOP" or speed_input == 0:
+        pwm_val = 0
+        s = 0.0
+        speed = 0
     else:
-        s = speed / 255.0
-        pwm_val = int(speed)
+        spd_pct = max(20, min(100, speed_input if speed_input <= 100 else int(speed_input * 100 / 255)))
+        pwm_val = int(65 + (spd_pct - 20) * (255 - 65) / 80.0)
+        s = spd_pct / 100.0
+        speed = spd_pct
 
     v_max = 1.0  # max linear speed (m/s)
     w_max = 1.5  # max angular speed (rad/s)
@@ -129,15 +132,15 @@ async def send_control_command(
 
     # 5. Format standardized ESP32 command string: "COMMAND SPEED"
     cmd_map = {
-        "FORWARD": f"tien {pwm_val}",
-        "BACKWARD": f"lui {pwm_val}",
-        "ROTATE_LEFT": f"xoay_trai {pwm_val}",
-        "ROTATE_RIGHT": f"xoay_phai {pwm_val}",
-        "STRAFE_LEFT": f"trai {pwm_val}",
-        "STRAFE_RIGHT": f"phai {pwm_val}",
+        "FORWARD": f"tien {speed}",
+        "BACKWARD": f"lui {speed}",
+        "ROTATE_LEFT": f"xoay_trai {speed}",
+        "ROTATE_RIGHT": f"xoay_phai {speed}",
+        "STRAFE_LEFT": f"trai {speed}",
+        "STRAFE_RIGHT": f"phai {speed}",
         "STOP": "dung"
     }
-    text_cmd = cmd_map.get(command, f"{command} {pwm_val}")
+    text_cmd = cmd_map.get(command, f"{command} {speed}")
     logger.info(f"🕹️ [WEB COMMAND RECEIVED] Action: '{command}' (speed {speed}%) -> Output: '{text_cmd}'")
     publishers_handler.publish_robot_move(text_cmd)
 

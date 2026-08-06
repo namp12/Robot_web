@@ -18,9 +18,11 @@ import {
   RotateCw, 
   ShieldAlert, 
   Cpu, 
-  Settings 
+  Settings,
+  Zap
 } from 'lucide-react';
 import robotService from '../services/robot.service';
+import wsService from '../services/websocket.service';
 
 export const RobotControl: React.FC = () => {
   const { telemetry } = useTelemetry();
@@ -28,13 +30,36 @@ export const RobotControl: React.FC = () => {
   const isManual = rawMode.includes('MANUAL') || rawMode === 'IDLE' || rawMode === 'ONLINE' || rawMode === 'OK';
   const currentMode = isManual ? 'MANUAL' : rawMode;
   
-  const [speedPercent, setSpeedPercent] = useState<number>(60);
+  // Persist speed in localStorage, default to 70% (Standard 70 PWM)
+  const [speedPercent, setSpeedPercentState] = useState<number>(() => {
+    const saved = localStorage.getItem('robot_control_speed');
+    const parsed = saved ? parseInt(saved, 10) : 70;
+    return isNaN(parsed) || parsed < 20 ? 70 : parsed;
+  });
+
   const [lastCmd, setLastCmd] = useState<string>('STOP');
+
+  const setSpeedPercent = useCallback((val: number) => {
+    const clamped = Math.max(20, Math.min(100, val));
+    setSpeedPercentState(clamped);
+    localStorage.setItem('robot_control_speed', clamped.toString());
+  }, []);
 
   const sendMove = useCallback(async (command: string, speedVal?: number) => {
     const activeSpeed = speedVal !== undefined ? speedVal : speedPercent;
     setLastCmd(command);
 
+    // 1. Send instant 0ms command via WebSocket if connected
+    if (wsService.isConnected()) {
+      wsService.send({
+        type: 'move',
+        command: command,
+        speed: activeSpeed
+      });
+      return;
+    }
+
+    // 2. Fallback to HTTP POST
     try {
       await robotService.setControlCommand({ command, speed: activeSpeed });
     } catch (e) {
@@ -115,15 +140,21 @@ export const RobotControl: React.FC = () => {
 
   const handleSpeedChange = useCallback(async (newSpeed: number) => {
     setSpeedPercent(newSpeed);
-    // Real-time speed adjustments if robot is moving
+    // Notify backend & ROS of updated speed setting immediately
+    if (wsService.isConnected()) {
+      wsService.send({
+        type: 'speed',
+        speed: newSpeed
+      });
+    }
     if (lastCmd && lastCmd !== 'STOP' && lastCmd !== 'IDLE' && lastCmd !== 'RESET' && lastCmd !== 'EMERGENCY_STOP') {
       try {
-        await robotService.setControlCommand({ command: lastCmd, speed: newSpeed });
+        await sendMove(lastCmd, newSpeed);
       } catch (e) {
-        console.error('Speed change control error', e);
+        console.error('Speed change error', e);
       }
     }
-  }, [lastCmd]);
+  }, [lastCmd, sendMove, setSpeedPercent]);
 
   const toggleMode = async (newMode: 'MANUAL' | 'AUTO' | 'ROS') => {
     try {
@@ -345,22 +376,44 @@ export const RobotControl: React.FC = () => {
         <div className="space-y-6">
           <Card title="Chassis Speed Limit" icon={<Gauge className="w-5 h-5 text-accent-amber" />}>
             <div className="space-y-5 p-2">
-              <div className="flex justify-between text-sm font-mono">
+              <div className="flex justify-between items-center text-sm font-mono">
                 <span className="text-slate-400">PWM Output Level:</span>
-                <span className="text-accent-amber font-bold">{speedPercent}% ({Math.round(speedPercent * 2.55)} PWM)</span>
+                <span className="text-accent-amber font-bold text-base">{speedPercent}% ({Math.round(speedPercent * 2.55)} PWM)</span>
               </div>
               <input
                 type="range"
-                min="10"
+                min="20"
                 max="100"
                 step="5"
                 value={speedPercent}
                 onChange={(e) => handleSpeedChange(parseInt(e.target.value))}
-                className="w-full accent-primary-500 cursor-pointer h-2 bg-slate-800 rounded-lg"
+                className="w-full accent-amber-400 cursor-pointer h-3 bg-slate-800 rounded-lg"
               />
               <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                <span>10% (Low Torque)</span>
-                <span>100% (Max Velocity)</span>
+                <span>20% (Low Torque)</span>
+                <span>70% (Default Safe)</span>
+                <span>100% (Max)</span>
+              </div>
+
+              {/* Quick Speed Preset Buttons */}
+              <div className="pt-2">
+                <span className="text-[11px] font-mono text-slate-400 block mb-2">QUICK SPEED PRESETS:</span>
+                <div className="grid grid-cols-4 gap-2">
+                  {[30, 50, 70, 100].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleSpeedChange(preset)}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all border ${
+                        speedPercent === preset
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-md shadow-amber-950/40 scale-105'
+                          : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                      }`}
+                    >
+                      {preset}%
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </Card>
@@ -383,7 +436,7 @@ export const RobotControl: React.FC = () => {
                 icon={<Settings className="w-4 h-4" />}
                 onClick={() => {
                   setLastCmd('RESET');
-                  robotService.setControlCommand({ command: 'STOP', speed: 0 });
+                  sendMove('STOP', 0);
                 }}
               >
                 Reset Drive System

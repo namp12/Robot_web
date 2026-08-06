@@ -28,8 +28,20 @@ export const RobotControl: React.FC = () => {
   const isManual = rawMode.includes('MANUAL') || rawMode === 'IDLE' || rawMode === 'ONLINE' || rawMode === 'OK';
   const currentMode = isManual ? 'MANUAL' : rawMode;
   
-  const [speedPercent, setSpeedPercent] = useState<number>(60);
+  // Persist speed in localStorage, default to 70% (Standard 70 PWM)
+  const [speedPercent, setSpeedPercentState] = useState<number>(() => {
+    const saved = localStorage.getItem('robot_control_speed');
+    const parsed = saved ? parseInt(saved, 10) : 70;
+    return isNaN(parsed) || parsed < 20 ? 70 : parsed;
+  });
+
   const [lastCmd, setLastCmd] = useState<string>('STOP');
+
+  const setSpeedPercent = useCallback((val: number) => {
+    const clamped = Math.max(20, Math.min(100, val));
+    setSpeedPercentState(clamped);
+    localStorage.setItem('robot_control_speed', clamped.toString());
+  }, []);
 
   const sendMove = useCallback(async (command: string, speedVal?: number) => {
     const activeSpeed = speedVal !== undefined ? speedVal : speedPercent;
@@ -126,34 +138,45 @@ export const RobotControl: React.FC = () => {
 
   const handleSpeedChange = useCallback(async (newSpeed: number) => {
     setSpeedPercent(newSpeed);
+    // Notify backend & ROS of updated speed setting immediately
+    if (wsService.isConnected()) {
+      wsService.send({
+        type: 'speed',
+        speed: newSpeed
+      });
+    }
     if (lastCmd && lastCmd !== 'STOP' && lastCmd !== 'IDLE' && lastCmd !== 'RESET' && lastCmd !== 'EMERGENCY_STOP') {
       try {
-        await robotService.setControlCommand({ command: lastCmd, speed: newSpeed });
+        await sendMove(lastCmd, newSpeed);
       } catch (e) {
-        console.error('Speed change error', e);
+        console.error('Speed change control error', e);
       }
     }
-  }, [lastCmd]);
+  }, [lastCmd, sendMove, setSpeedPercent]);
 
-  const isControlDisabled = false;
+  const isControlDisabled = currentMode !== 'MANUAL';
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-      {/* Control Grid Matrix */}
-      <Card title="Holonomic Drive Matrix" subtitle="Mecanum keyboard mappings (WASD/Arrows/UI)">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      {/* Mecanum Directional Control Grid */}
+      <Card title="Holonomic Drive Matrix" subtitle="Mecanum steering geometry (WASD / Keyboard mapping)">
         <div className="relative flex flex-col items-center justify-center p-6 space-y-4">
           
+          {/* Control Disabled overlay */}
           {isControlDisabled && (
             <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-xl border border-slate-800/80 text-center p-6">
               <Cpu className="w-12 h-12 text-slate-500 mb-2 animate-pulse" />
               <h3 className="font-bold text-slate-300 text-sm">Control Locked</h3>
               <p className="text-xs text-slate-500 max-w-xs mt-1">
-                Manual controls are disabled in {currentMode} mode. Switch back to MANUAL to unlock.
+                Manual controls are currently disabled in {currentMode} mode. Switch back to MANUAL to use these controls.
               </p>
             </div>
           )}
 
+          {/* 3x3 Mecanum Grid */}
           <div className="grid grid-cols-3 gap-3 max-w-[340px] w-full">
+            {/* Row 1 */}
             <Button
               variant="secondary"
               disabled={isControlDisabled}
@@ -187,6 +210,7 @@ export const RobotControl: React.FC = () => {
               <span>DIA FR</span>
             </Button>
 
+            {/* Row 2 */}
             <Button
               variant="secondary"
               disabled={isControlDisabled}
@@ -219,6 +243,7 @@ export const RobotControl: React.FC = () => {
               <span>STRAFE R</span>
             </Button>
 
+            {/* Row 3 */}
             <Button
               variant="secondary"
               disabled={isControlDisabled}
@@ -253,12 +278,14 @@ export const RobotControl: React.FC = () => {
             </Button>
           </div>
 
+          {/* Rotational controls (Row 4) */}
           <div className="flex gap-4 w-full max-w-[340px] pt-2">
             <Button
               variant="outline"
               disabled={isControlDisabled}
               className="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold"
               onClick={() => sendMove('ROTATE_LEFT')}
+              title="Rotate Left (Q)"
             >
               <RotateCcw className="w-4 h-4 text-accent-amber" />
               <span>ROTATE L</span>
@@ -268,6 +295,7 @@ export const RobotControl: React.FC = () => {
               disabled={isControlDisabled}
               className="flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold"
               onClick={() => sendMove('ROTATE_RIGHT')}
+              title="Rotate Right (E)"
             >
               <RotateCw className="w-4 h-4 text-accent-amber" />
               <span>ROTATE R</span>
@@ -285,19 +313,45 @@ export const RobotControl: React.FC = () => {
       <div className="space-y-6">
         <Card title="Chassis Speed Limit" icon={<Gauge className="w-5 h-5 text-accent-amber" />}>
           <div className="space-y-5 p-2">
-            <div className="flex justify-between text-sm font-mono">
+            <div className="flex justify-between items-center text-sm font-mono">
               <span className="text-slate-400">PWM Output Level:</span>
-              <span className="text-accent-amber font-bold">{speedPercent}% ({Math.round(speedPercent * 2.55)} PWM)</span>
+              <span className="text-accent-amber font-bold text-base">{speedPercent}% ({Math.round(speedPercent * 2.55)} PWM)</span>
             </div>
             <input
               type="range"
-              min="10"
+              min="20"
               max="100"
               step="5"
               value={speedPercent}
               onChange={(e) => handleSpeedChange(parseInt(e.target.value))}
-              className="w-full accent-primary-500 cursor-pointer h-2 bg-slate-800 rounded-lg"
+              className="w-full accent-amber-400 cursor-pointer h-3 bg-slate-800 rounded-lg"
             />
+            <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+              <span>20% (Low Torque)</span>
+              <span>70% (Default Safe)</span>
+              <span>100% (Max)</span>
+            </div>
+
+            {/* Quick Speed Preset Buttons */}
+            <div className="pt-2">
+              <span className="text-[11px] font-mono text-slate-400 block mb-2">QUICK SPEED PRESETS:</span>
+              <div className="grid grid-cols-4 gap-2">
+                {[30, 50, 70, 100].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => handleSpeedChange(preset)}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all border ${
+                      speedPercent === preset
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-md shadow-amber-950/40 scale-105'
+                        : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                    }`}
+                  >
+                    {preset}%
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </Card>
 
@@ -319,7 +373,7 @@ export const RobotControl: React.FC = () => {
               icon={<Settings className="w-4 h-4" />}
               onClick={() => {
                 setLastCmd('RESET');
-                robotService.setControlCommand({ command: 'STOP', speed: 0 });
+                sendMove('STOP', 0);
               }}
             >
               Reset Drive System
