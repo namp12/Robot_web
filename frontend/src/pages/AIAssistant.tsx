@@ -109,6 +109,27 @@ export const AIAssistant: React.FC = () => {
       };
       setMessages((prev) => [...prev, assistantMsg]);
 
+      // 3.5. Tự động đọc câu trả lời ra Loa Bluetooth / Loa hệ thống đã kết nối
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(replyText);
+          utterance.lang = 'vi-VN';
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+
+          const voices = window.speechSynthesis.getVoices();
+          const viVoice = voices.find(v => v.lang.includes('vi') || v.name.toLowerCase().includes('vietnam') || v.name.toLowerCase().includes('hoaimy'));
+          if (viVoice) {
+            utterance.voice = viVoice;
+          }
+
+          window.speechSynthesis.speak(utterance);
+        } catch (speechErr) {
+          console.error('Web Speech Synthesis error', speechErr);
+        }
+      }
+
       // 4. Save to NoSQL DB
       await aiService.saveConversation(userPrompt, replyText, 1);
     } catch (err) {
@@ -168,9 +189,29 @@ export const AIAssistant: React.FC = () => {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0 ${msg.sender === 'user' ? 'bg-primary-600' : 'bg-accent-cyan'}`}>
                 {msg.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
               </div>
-              <div className={`max-w-[70%] p-3.5 rounded-2xl text-sm ${msg.sender === 'user' ? 'bg-primary-600/20 text-slate-100 border border-primary-500/30' : 'bg-slate-800 text-slate-200 border border-slate-700'}`}>
+              <div className={`max-w-[70%] p-3.5 rounded-2xl text-sm relative group ${msg.sender === 'user' ? 'bg-primary-600/20 text-slate-100 border border-primary-500/30' : 'bg-slate-800 text-slate-200 border border-slate-700'}`}>
                 <p className="leading-relaxed">{msg.text}</p>
-                <span className="text-[9px] text-slate-500 mt-1.5 block text-right font-mono">{msg.timestamp}</span>
+                <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-700/40 text-[9px] text-slate-500 font-mono">
+                  <span>{msg.timestamp}</span>
+                  {msg.sender === 'assistant' && (
+                    <button
+                      onClick={() => {
+                        if ('speechSynthesis' in window) {
+                          window.speechSynthesis.cancel();
+                          const utt = new SpeechSynthesisUtterance(msg.text);
+                          utt.lang = 'vi-VN';
+                          const v = window.speechSynthesis.getVoices().find(voice => voice.lang.includes('vi'));
+                          if (v) utt.voice = v;
+                          window.speechSynthesis.speak(utt);
+                        }
+                      }}
+                      className="text-accent-cyan hover:text-white transition-colors flex items-center gap-1 font-sans"
+                      title="Phát giọng nói ra Loa Bluetooth"
+                    >
+                      🔊 Phát Loa
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
