@@ -18,17 +18,27 @@ class WebSocketService {
     this.url = import.meta.env.VITE_WS_URL || `${protocol}//${hostname}:8000/ws/status`;
   }
 
+  private connectCount: number = 0;
+
   public connect() {
     if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
       return;
     }
 
     this.isConnecting = true;
+    this.connectCount++;
+
+    // Try localhost first, then fallback to Pi IP 192.168.61.135 if localhost fails
+    let targetUrl = this.url;
+    if (this.connectCount > 2 && window.location.hostname === 'localhost') {
+      targetUrl = `ws://192.168.61.135:8000/ws/status`;
+    }
+
     try {
-      this.socket = new WebSocket(this.url);
+      this.socket = new WebSocket(targetUrl);
 
       this.socket.onopen = () => {
-        console.log('🔌 [WebSocket] Connected to Telemetry Stream:', this.url);
+        console.log('🔌 [WebSocket] Connected to Telemetry Stream:', targetUrl);
         this.isConnecting = false;
         this.notifyConnectionState(true);
       };

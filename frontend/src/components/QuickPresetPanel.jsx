@@ -25,16 +25,35 @@ export default function QuickPresetPanel({ currentPreset = 3, onPresetSelect }) 
     setLoading(true);
     setActivePreset(presetId);
 
+    const presetObj = PRESETS.find(p => p.id === presetId);
+    const targetMode = presetObj ? presetObj.targetMode : 'MANUAL';
+
     try {
+      // 1. Send to local Vite proxy endpoint
       await fetch('/api/v1/preset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ preset: presetId, source: 'QUICK_PRESET_PANEL' })
       });
-      if (onPresetSelect) onPresetSelect(presetId);
     } catch (err) {
-      console.warn('Preset switch request sent:', presetId, err);
+      // 2. Fallback direct request to Pi FastAPI (8000) & HTTP Bridge (8001) if proxy fails
+      try {
+        await fetch('http://192.168.61.135:8000/api/v1/preset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ preset: presetId, source: 'QUICK_PRESET_PANEL' })
+        });
+      } catch (e) {}
+
+      try {
+        await fetch('http://192.168.61.135:8001/command', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: `mode ${targetMode}`, command: `mode ${targetMode}` })
+        });
+      } catch (e) {}
     } finally {
+      if (onPresetSelect) onPresetSelect(presetId);
       setLoading(false);
     }
   };
