@@ -109,27 +109,6 @@ export const AIAssistant: React.FC = () => {
       };
       setMessages((prev) => [...prev, assistantMsg]);
 
-      // 3.5. Tự động đọc câu trả lời ra Loa Bluetooth / Loa hệ thống đã kết nối
-      if ('speechSynthesis' in window) {
-        try {
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(replyText);
-          utterance.lang = 'vi-VN';
-          utterance.rate = 1.0;
-          utterance.pitch = 1.0;
-
-          const voices = window.speechSynthesis.getVoices();
-          const viVoice = voices.find(v => v.lang.includes('vi') || v.name.toLowerCase().includes('vietnam') || v.name.toLowerCase().includes('hoaimy'));
-          if (viVoice) {
-            utterance.voice = viVoice;
-          }
-
-          window.speechSynthesis.speak(utterance);
-        } catch (speechErr) {
-          console.error('Web Speech Synthesis error', speechErr);
-        }
-      }
-
       // 4. Save to NoSQL DB
       await aiService.saveConversation(userPrompt, replyText, 1);
     } catch (err) {
