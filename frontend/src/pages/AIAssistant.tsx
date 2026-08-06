@@ -50,18 +50,15 @@ export const AIAssistant: React.FC = () => {
           }
         });
 
-        // Update state only if we have new messages
+        // Update state only if DB returns valid logs, without wiping local chat history
         setMessages((prev) => {
-          if (prev.length !== parsedMsgs.length) {
-            return parsedMsgs;
+          if (parsedMsgs.length <= 1 && prev.length > 1) {
+            return prev;
           }
-          // Compare last message
-          if (prev.length > 0 && parsedMsgs.length > 0) {
-            if (prev[prev.length - 1].text !== parsedMsgs[parsedMsgs.length - 1].text) {
-              return parsedMsgs;
-            }
+          if (prev.length > parsedMsgs.length) {
+            return prev;
           }
-          return prev;
+          return parsedMsgs;
         });
       }
     } catch (err) {
