@@ -30,6 +30,7 @@ import MapView from '../components/MapView';
 import RobotControl from '../components/RobotControl';
 import QuickPresetPanel from '../components/QuickPresetPanel';
 import QuickModePanel from '../components/QuickModePanel';
+import AutonomyStatusPanel from '../components/AutonomyStatusPanel';
 
 export const Dashboard: React.FC = () => {
   const { telemetry, isConnected } = useTelemetry();
@@ -234,6 +235,9 @@ export const Dashboard: React.FC = () => {
           <StatusBadge status={isConnected ? 'ONLINE' : 'OFFLINE'} size="sm" />
         </div>
       </div>
+
+      {/* Multi-Sensor Fusion & Autonomy Decision System V5.0 */}
+      <AutonomyStatusPanel />
 
       {/* Quick Preset Mode Control System Panel V1 */}
       <QuickPresetPanel />
