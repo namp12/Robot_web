@@ -9,7 +9,8 @@ logger = logging.getLogger("AIService")
 
 class AIService:
     KNOWLEDGE_BASE = [
-        (["bạn tên gì", "tên bạn là gì", "bạn tên là gì", "tên là gì", "cậu tên gì"], "Chào bạn, tôi tên là Kim Qui, được nhóm Galacticos phát triển, thuộc Khoa Công nghệ Thông tin, Đại học Đại Nam."),
+        (["chào ban giám khảo", "kính chào ban giám khảo", "chào ban giấm khảo", "ban giam khao", "giam khao", "ban giam", "chào thầy cô", "kính chào thầy cô", "chào các thầy cô", "chào hội đồng", "kim qui chào ban giám khảo", "chào"], "Dạ, Kim Qui xin kính chào Ban Giám khảo và quý Thầy Cô! Kim Qui rất vinh dự được đồng hành và phục vụ quý Thầy Cô hôm nay ạ!"),
+        (["bạn tên gì", "tên bạn là gì", "bạn tên là gì", "tên là gì", "cậu tên gì", "bạn là ai"], "Dạ, em tên là Kim Qui, được sáng tạo bởi nhóm sinh viên Galacticos Khoa CNTT Trường Đại học Đại Nam ạ!"),
         (["ai tạo ra", "ai làm ra", "tác giả", "thầy thơ", "đỗ quang thơ", "phương nam", "hoàng dương", "duy a", "duy văn"], "Tôi được sáng tạo bởi các sinh viên Khoa Công nghệ Thông tin, Trường Đại học Đại Nam, gồm: Nguyễn Thế Phương Nam, Nguyễn Hoàng Dương, Lê Duy A, Đỗ Duy Văn, dưới sự mentor của thầy Đỗ Quang Thơ.")
     ]
 
