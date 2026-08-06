@@ -3,6 +3,17 @@ import api from './api';
 export const aiService = {
   chat: async (prompt: string) => {
     try {
+      const res = await fetch('http://localhost:5050/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: prompt })
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {}
+
+    try {
       return await api.post('/ai/chat', { question: prompt });
     } catch (err) {
       // Fallback direct POST to Raspberry Pi backend
