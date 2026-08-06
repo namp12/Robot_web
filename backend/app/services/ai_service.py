@@ -77,14 +77,36 @@ class AIService:
         if not answer:
             answer = f"Dạ, Kim Qui đã nhận câu hỏi: '{question}'. Kim Qui luôn sẵn sàng đồng hành cùng bạn nè!"
 
-        # 2. Speak answer out loud via Raspberry Pi Speaker (Port 8001 /tts)
-        try:
-            pi_ip = getattr(settings, 'PI_IP', '192.168.61.135')
-            tts_url = f"http://{pi_ip}:8001/tts"
-            async with httpx.AsyncClient(timeout=2.0) as client:
-                await client.post(tts_url, json={"text": answer})
-        except Exception as err:
-            logger.warning(f"Could not send TTS to Pi Speaker: {err}")
+        # Parse Movement Commands from chat input text
+        cmd_text = None
+        if any(kw in question_lower for kw in ["đi thẳng", "tiến lên", "chạy tới"]):
+            cmd_text = "tien 100"
+        elif any(kw in question_lower for kw in ["lùi lại", "chạy lùi", "lùi"]):
+            cmd_text = "lui 80"
+        elif any(kw in question_lower for kw in ["rẽ trái", "quay trái"]):
+            cmd_text = "trai 80"
+        elif any(kw in question_lower for kw in ["rẽ phải", "quay phải"]):
+            cmd_text = "phai 80"
+        elif any(kw in question_lower for kw in ["dừng lại", "dừng xe", "đứng yên"]):
+            cmd_text = "dung"
+        elif any(kw in question_lower for kw in ["bám người", "bám theo người", "đi theo tôi"]):
+            cmd_text = "mode FOLLOW_PERSON"
+
+        # Speak answer out loud via Raspberry Pi Speaker & send wheel command (Auto Fallback candidate IPs)
+        candidate_ips = ['192.168.60.127', '192.168.61.135', '127.0.0.1']
+        async with httpx.AsyncClient(timeout=1.5) as client:
+            for ip in candidate_ips:
+                try:
+                    # 1. Phát loa ra Loa Robot trên Pi
+                    await client.post(f"http://{ip}:8000/command", json={"text": f"say {answer}"})
+                    await client.post(f"http://{ip}:8001/tts", json={"text": answer})
+                    # 2. Nếu có lệnh di chuyển -> Thực thi bánh xe
+                    if cmd_text:
+                        await client.post(f"http://{ip}:8000/command", json={"text": cmd_text})
+                    logger.info(f"[AIService] Sent TTS & Command to Pi ({ip}): '{answer}'")
+                    break
+                except Exception as err:
+                    pass
 
         # 3. Save conversation log in TinyDB NoSQL Database
         try:
