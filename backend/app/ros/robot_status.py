@@ -233,6 +233,15 @@ class RobotTelemetryStore:
                 "scan": dict(self._scan_cache),
                 "odom": dict(self._odom_cache),
                 "map": dict(self._map_cache),
+                "running_feature": self._mode,
+                "running_modules": ["Web Joystick", "Keyboard Control", "Direct Wheel Output"] if self._mode == "MANUAL" else (["Camera AI", "YOLO Person Tracking"] if self._mode == "FOLLOW_PERSON" else ["LiDAR 360 Navigation", "Costmap", "Sector Planner", "Recovery"]),
+                "disabled_modules": ["Local Planner", "Costmap", "Auto Explore", "Person Tracking"] if self._mode == "MANUAL" else ["Auto Explore", "Costmap", "Sector Planner"],
+                "sensor_profile": {
+                    "camera_enabled": self._mode in ["FOLLOW_PERSON", "AUTO_EXPLORE", "GO_TO_GOAL", "PATROL", "DELIVERY", "RETURN_HOME", "INSPECTION"],
+                    "yolo_enabled": self._mode in ["FOLLOW_PERSON", "AUTO_EXPLORE", "GO_TO_GOAL", "PATROL", "DELIVERY"],
+                    "lidar_enabled": self._mode in ["SAFE_MANUAL", "FOLLOW_PERSON", "AUTO_EXPLORE", "GO_TO_GOAL", "PATROL", "DELIVERY", "RETURN_HOME"],
+                    "planner_enabled": self._mode in ["AUTO_EXPLORE", "GO_TO_GOAL", "PATROL", "DELIVERY", "RETURN_HOME"]
+                }
             }
 
 
