@@ -38,6 +38,8 @@ def switch_preset(req: PresetSwitchRequest):
     }
 
     target_mode = preset_mode_map.get(preset_id, "MANUAL")
+    from app.ros.robot_status import telemetry_store
+    telemetry_store.update_mode(target_mode)
 
     try:
         pi_url = "http://localhost:8001/command"

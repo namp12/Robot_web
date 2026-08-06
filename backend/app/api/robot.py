@@ -71,11 +71,6 @@ async def send_control_command(
     cmd: ControlCommandRequest
 ):
     """POST /api/robot/move - Publish movement command to /cmd_vel and /esp32/serial_tx."""
-    # 1. Allow manual web control by resetting mode to MANUAL if needed
-    current_mode = telemetry_store.get_snapshot().get("mode", "MANUAL")
-    if current_mode in ["ROS", "AUTO"]:
-        telemetry_store.update_mode("MANUAL")
-
     # 2. Validate Command
     VALID_COMMANDS = {
         "FORWARD", "BACKWARD", "STRAFE_LEFT", "STRAFE_RIGHT",

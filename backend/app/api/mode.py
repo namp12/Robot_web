@@ -19,6 +19,8 @@ def switch_robot_mode(req: ModeSwitchRequest):
     Forwards mode switch request to Raspberry Pi HTTP bridge (Port 8001).
     """
     mode_name = req.mode.strip().upper().replace("MODE_", "")
+    from app.ros.robot_status import telemetry_store
+    telemetry_store.update_mode(mode_name)
 
     try:
         # Forward to Pi HTTP Bridge on port 8001 (/command)
