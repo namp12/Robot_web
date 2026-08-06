@@ -23,14 +23,24 @@ def switch_robot_mode(req: ModeSwitchRequest):
     telemetry_store.update_mode(mode_name)
 
     try:
-        # Forward to Pi HTTP Bridge on port 8001 (/command)
-        pi_url = "http://localhost:8001/command"
-        payload = {"command": f"mode {mode_name}"}
-        resp = requests.post(pi_url, json=payload, timeout=2.0)
+        import os
+        pi_ip = os.getenv("PI_IP", "192.168.61.135")
+        target_urls = ["http://localhost:8001/command", f"http://{pi_ip}:8001/command"]
+        payload = {"text": f"mode {mode_name}", "command": f"mode {mode_name}"}
+        resp_json = "OK"
+        for url in target_urls:
+            try:
+                resp = requests.post(url, json=payload, timeout=1.0)
+                if resp.status_code == 200:
+                    resp_json = resp.json()
+                    break
+            except Exception:
+                continue
+
         return {
             "status": "success",
             "requested_mode": mode_name,
-            "bridge_response": resp.json() if resp.status_code == 200 else "OK"
+            "bridge_response": resp_json
         }
     except Exception as e:
         return {

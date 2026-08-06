@@ -42,14 +42,25 @@ def switch_preset(req: PresetSwitchRequest):
     telemetry_store.update_mode(target_mode)
 
     try:
-        pi_url = "http://localhost:8001/command"
-        payload = {"command": f"mode {target_mode}"}
-        resp = requests.post(pi_url, json=payload, timeout=2.0)
+        import os
+        pi_ip = os.getenv("PI_IP", "192.168.61.135")
+        target_urls = ["http://localhost:8001/command", f"http://{pi_ip}:8001/command"]
+        payload = {"text": f"mode {target_mode}", "command": f"mode {target_mode}"}
+        resp_json = "OK"
+        for url in target_urls:
+            try:
+                resp = requests.post(url, json=payload, timeout=1.0)
+                if resp.status_code == 200:
+                    resp_json = resp.json()
+                    break
+            except Exception:
+                continue
+
         return {
             "status": "success",
             "preset_id": preset_id,
             "mapped_mode": target_mode,
-            "bridge_response": resp.json() if resp.status_code == 200 else "OK"
+            "bridge_response": resp_json
         }
     except Exception as e:
         return {
