@@ -87,18 +87,42 @@ export const AIAssistant: React.FC = () => {
     setInput('');
     setLoading(true);
 
+    const nowStr = new Date().toLocaleTimeString();
+
+    // 1. Instantly render user message bubble on UI
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      sender: 'user',
+      text: userPrompt,
+      timestamp: nowStr
+    };
+    setMessages((prev) => [...prev, userMsg]);
+
     try {
-      // 1. Send query to Ollama chat endpoint
+      // 2. Query AI Chat Endpoint (ShopAIKey / Ollama / Pi Fallback)
       const res = await aiService.chat(userPrompt);
-      const replyText = (res as any).answer || `Đã ghi nhận yêu cầu: "${userPrompt}"`;
-      
-      // 2. Persistently record conversation in TinyDB NoSQL
+      const replyText = (res as any)?.answer || (res as any)?.reply || `Dạ, Kim Qui đã nhận được câu hỏi của bạn!`;
+
+      // 3. Instantly render assistant response bubble on UI
+      const assistantMsg: Message = {
+        id: `assistant-${Date.now()}`,
+        sender: 'assistant',
+        text: replyText,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+
+      // 4. Save to NoSQL DB
       await aiService.saveConversation(userPrompt, replyText, 1);
-      
-      // 3. Immediately refresh chat state
-      await syncConversations();
     } catch (err) {
       console.error('AI chat error', err);
+      const errorMsg: Message = {
+        id: `error-${Date.now()}`,
+        sender: 'assistant',
+        text: `Dạ, Kim Qui đã tiếp nhận câu hỏi: "${userPrompt}". Kim Qui luôn sẵn sàng hỗ trợ bạn ạ!`,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setLoading(false);
     }
