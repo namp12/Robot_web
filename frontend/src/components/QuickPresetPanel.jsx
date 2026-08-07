@@ -38,14 +38,14 @@ export default function QuickPresetPanel({ currentPreset = 3, onPresetSelect }) 
     } catch (err) {
       // 2. Fallback direct request to Pi FastAPI (8000) & HTTP Bridge (8001) if proxy fails
       try {
-        await fetch('http://10.68.9.203:8000/api/v1/preset', {
+        await fetch('http://172.16.68.245:8000/api/v1/preset', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ preset: presetId, source: 'QUICK_PRESET_PANEL' })
         });
       } catch (err2) {
         try {
-          await fetch('http://10.68.9.203:8001/command', {
+          await fetch('http://172.16.68.245:8001/command', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: `mode ${presetId}`, command: `mode ${presetId}` })

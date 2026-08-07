@@ -43,7 +43,7 @@ def switch_preset(req: PresetSwitchRequest):
 
     try:
         import os
-        pi_ip = os.getenv("PI_IP", "10.68.9.203")
+        pi_ip = os.getenv("PI_IP", "172.16.68.245")
         target_urls = ["http://localhost:8001/command", f"http://{pi_ip}:8001/command"]
         payload = {"text": f"mode {target_mode}", "command": f"mode {target_mode}"}
         resp_json = "OK"

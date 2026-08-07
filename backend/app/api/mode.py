@@ -24,7 +24,7 @@ def switch_robot_mode(req: ModeSwitchRequest):
 
     try:
         import os
-        pi_ip = os.getenv("PI_IP", "10.68.9.203")
+        pi_ip = os.getenv("PI_IP", "172.16.68.245")
         target_urls = ["http://localhost:8001/command", f"http://{pi_ip}:8001/command"]
         payload = {"text": f"mode {mode_name}", "command": f"mode {mode_name}"}
         resp_json = "OK"

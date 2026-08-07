@@ -94,7 +94,7 @@ class AIService:
             cmd_text = "mode FOLLOW_PERSON"
 
         # Speak answer out loud via Raspberry Pi Speaker & send wheel command (Auto Fallback candidate IPs)
-        candidate_ips = ['10.68.9.203', '192.168.61.135', '127.0.0.1']
+        candidate_ips = ['172.16.68.245', '10.68.9.203', '127.0.0.1']
         async with httpx.AsyncClient(timeout=1.5) as client:
             for ip in candidate_ips:
                 try:
