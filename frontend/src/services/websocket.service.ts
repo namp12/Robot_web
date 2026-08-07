@@ -31,7 +31,7 @@ class WebSocketService {
     // Try localhost first, then fallback to Pi IP 192.168.61.135 if localhost fails
     let targetUrl = this.url;
     if (this.connectCount > 2 && window.location.hostname === 'localhost') {
-      targetUrl = `ws://192.168.61.135:8000/ws/status`;
+      targetUrl = `ws://10.68.9.203:8000/ws/status`;
     }
 
     try {

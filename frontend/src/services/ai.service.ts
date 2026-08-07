@@ -17,7 +17,7 @@ export const aiService = {
       return await api.post('/ai/chat', { question: prompt });
     } catch (err) {
       // Fallback direct POST to Raspberry Pi backend
-      const candidateIps = ['192.168.60.127', '192.168.61.135'];
+      const candidateIps = ['10.68.9.203', '192.168.61.135'];
       for (const ip of candidateIps) {
         try {
           const res = await fetch(`http://${ip}:8000/api/ai/chat`, {

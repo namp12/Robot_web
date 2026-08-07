@@ -15,7 +15,7 @@ export const LiDAR: React.FC = () => {
   useEffect(() => {
     const fetchScan = async () => {
       try {
-        const piIp = '192.168.61.135';
+        const piIp = '10.68.9.203';
         const res = await fetch(`http://${piIp}:8001/scan`);
         if (res.ok) {
           const data = await res.json();
